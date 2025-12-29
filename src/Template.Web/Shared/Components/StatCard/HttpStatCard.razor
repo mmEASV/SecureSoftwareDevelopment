@@ -1,0 +1,115 @@
+﻿@using Template.Shared.Dto
+@using Template.Web.Application.Services
+@inherits CustomComponentBase
+@inject IHttpService HttpService
+@inject IJSRuntime jsRuntime
+
+<style>
+    .card-hover {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+
+        /* Smooth transition on border-width */
+        transition: border-left-width 300ms ease;
+    }
+
+    .card-hover:hover {
+        /* Override default border-left width on hover */
+        border-left-width: 40px !important;
+    }
+
+    .card-hover:hover::before {
+        opacity: 1;
+    }
+
+    .card-hover::before,
+    .card-hover::after {
+        border-radius: inherit;
+        content: "";
+        height: 100%;
+        left: 0px;
+        opacity: 0;
+        position: absolute;
+        top: 0px;
+        transition: opacity 500ms;
+        width: 100%;
+    }
+
+    .card-hover::before {
+        background: radial-gradient(
+            800px circle at var(--mouse-x) var(--mouse-y),
+            rgb(49, 108, 244, 0.086),
+            transparent 40%
+        );
+        z-index: 3;
+    }
+
+    .card-hover::after {
+        background: radial-gradient(
+            600px circle at var(--mouse-x) var(--mouse-y),
+            rgba(49, 108, 244, 0.6),
+            transparent 40%
+        );
+        z-index: 5;
+    }
+    
+</style>
+
+<StatCard Class=@($"{Class} {(VisitUrl != null ? "card-hover" : "")}")
+          Icon=@Icon
+          VisitUrl=@VisitUrl
+          Value="@($"{StatCardDto?.MainNumber}")"
+          Description=@($"+{StatCardDto?.DescriptionNumber} since last week")
+          ValueName=@ValueName/>
+
+<script>
+    // cardHoverEffect.js
+    window.updateHoverEffectForCard = () => {
+        for(const card of document.getElementsByClassName("card-hover")) {
+            card.onmousemove = e => {
+                const rect = card.getBoundingClientRect(),
+                    x = e.clientX - rect.left,
+                    y = e.clientY - rect.top;
+
+                card.style.setProperty("--mouse-x", `${x}px`);
+                card.style.setProperty("--mouse-y", `${y}px`);
+            };
+        }
+    };
+</script>
+
+@code {
+    [Parameter]
+    public string? ValueName { get; set; }
+
+    [Parameter]
+    public string? Icon { get; set; }
+    
+    [Parameter]
+    public string? VisitUrl { get; set; }
+    
+    [Parameter] 
+    public string? StatsUrl { get; set; }
+
+    public StatCardDto? StatCardDto { get; set; }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await jsRuntime.InvokeVoidAsync("updateHoverEffectForCard");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (StatsUrl is not null)
+        {
+            StatCardDto = await HttpService.Get<StatCardDto>(StatsUrl);
+        }
+
+        base.OnInitialized();
+    }
+
+}

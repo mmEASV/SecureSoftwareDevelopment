@@ -1,0 +1,11 @@
+﻿@namespace Template.Web.Shared.Components.PaginatedListView
+
+<div>
+    <DeleteConfirmationModal OnDeleteConfirmed="OnDelete" />
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = default!;
+    
+    [Parameter] public EventCallback<MouseEventArgs> OnDelete { get; set; }
+}

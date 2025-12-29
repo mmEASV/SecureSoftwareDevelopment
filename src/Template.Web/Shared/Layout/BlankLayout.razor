@@ -1,0 +1,13 @@
+﻿@inherits LayoutComponentBase
+@inject IToastService ToastService
+
+<ErrorBoundary>
+    <ChildContent>
+        @Body
+    </ChildContent>
+    <ErrorContent>
+        @Body
+        @{ToastService.ShowError(@context.Message);}
+    </ErrorContent>
+</ErrorBoundary>
+<BlazoredToasts Position="ToastPosition.TopRight"/>

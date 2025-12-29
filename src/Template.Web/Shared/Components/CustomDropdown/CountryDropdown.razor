@@ -1,0 +1,17 @@
+@inherits CustomComponentBase
+
+<select class="form-select" @bind="@Value">
+    <option value="SK" selected>🇸🇰&emsp;Slovensko</option>
+    <option value="CZ">🇨🇿&emsp;Česko</option>
+    <option value="AT">🇦🇹&emsp;Rakúsko</option>
+    <option value="PL">🇵🇱&emsp;Poľsko</option>
+    <option value="UA">🇺🇦&emsp;Ukrajina</option>
+</select>
+
+@code {
+    [Parameter]
+    public string? Value { get; set; } // The bound property
+
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; } // Notifies change back to parent
+}

@@ -1,0 +1,50 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components
+@inherits LayoutComponentBase
+@inject IToastService ToastService
+
+<div class="page" @ref="container">
+    <div class="sidebar shadow-sm d-flex flex-column @SidebarCssClass" style="background-color: var(--bs-light);">
+        <CascadingValue Value="@container">
+            <DefaultMenu/>
+        </CascadingValue>
+    </div>
+
+    <main>
+        <img src="login_blur_bckg.png" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.15; z-index: -1;"/>
+        <div style="z-index: 1000">
+            <button class="burger-menu" @onclick="ToggleSidebar">☰</button>
+            <article class="px-1 px-sm-5 py-3">
+                <ErrorBoundary @ref="errorBoundary">
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent>
+                        <p class="errorUI">Something went really wrong please contact administrator.</p>
+                        @{ ToastService.ShowError(@context.Message); }
+                    </ErrorContent>
+                </ErrorBoundary>
+                <FluentDialogProvider />
+            </article>
+        </div>
+    </main>
+
+    <BlazoredToasts Position="ToastPosition.TopRight" />
+</div>
+
+@code {
+    private ErrorBoundary? errorBoundary;
+    ElementReference container;
+
+    private bool isSidebarVisible = false;
+    private string SidebarCssClass => isSidebarVisible ? "sidebar-visible" : "sidebar-hidden";
+
+    private void ToggleSidebar()
+    {
+        isSidebarVisible = !isSidebarVisible;
+    }
+
+    protected override void OnParametersSet()
+    {
+        errorBoundary?.Recover();
+    }
+}

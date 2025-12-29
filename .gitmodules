@@ -1,0 +1,3 @@
+[submodule "Libraries/Community.Blazor.MapLibre"]
+	path = Libraries/Community.Blazor.MapLibre
+	url = git@github.com:Yet-another-solution/Blazor.MapLibre.git

@@ -1,0 +1,38 @@
+﻿@namespace Template.Web.Shared.Components.CustomLabel
+
+@inherits CustomComponentBase
+
+@inject IJSRuntime JsRuntime
+
+<div class="d-flex gap-3">
+    @if (!HideBack)
+    {
+        <button class="btn" @onclick="GoBack">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+    }
+    <div class="col d-flex align-items-center">
+        <h1 class="h3 m-0">
+            @Title
+        </h1>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Title of the page
+    /// </summary>
+    [Parameter]
+    public required string Title { get; set; }
+
+    /// <summary>
+    /// Hide a back button from the Page label
+    /// </summary>
+    [Parameter] 
+    public bool HideBack { get; set; } = false;
+
+    private async Task GoBack()
+    {
+        await JsRuntime.InvokeVoidAsync("history.back");
+    }
+}

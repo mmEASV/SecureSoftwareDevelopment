@@ -1,0 +1,56 @@
+﻿@inherits CustomComponentBase
+@inject NavigationManager NavigationManager
+
+@{ 
+    var canRedirect = !string.IsNullOrEmpty(VisitUrl) ? "canRedirect" : "";
+}
+<style>
+    .canRedirect {
+        cursor: pointer;
+    }
+</style>
+
+<div class="card shadow-sm border-primary border-0 border-5 border-start @Class @(canRedirect)"
+     @onclick="RedirectTo">
+    <div class="px-3 py-2">
+        <div class="d-flex">
+            <div class="col">
+                <p>@ValueName</p>
+
+                <p>@Value</p>
+
+                <p>@Description</p>
+            </div>
+            <div class="col-auto d-flex justify-content-center align-items-center">
+                <i class="bi h1 @Icon text-primary mb-0 me-2"></i>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public string? ValueName { get; set; }
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public string? Icon { get; set; }
+    
+    [Parameter]
+    public string? VisitUrl { get; set; }
+
+    private void RedirectTo()
+    {
+        if (VisitUrl is not null)
+        {
+            NavigationManager.NavigateTo(VisitUrl);
+        }
+    }
+
+}

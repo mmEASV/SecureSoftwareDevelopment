@@ -1,0 +1,25 @@
+﻿services:
+  template.api:
+    image: template.api
+    build:
+      context: .
+      dockerfile: Template.Api/Dockerfile
+  template.web:
+    image: template.web
+    build:
+      context: .
+      dockerfile: Template.Web/Dockerfile
+  postgres:
+    image: postgres:latest
+    container_name: template-home
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=Template
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

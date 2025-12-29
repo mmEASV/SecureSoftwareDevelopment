@@ -1,0 +1,138 @@
+@using Template.Shared.Dto
+@using Template.Shared.Utils
+@using Template.Web.Application.Services
+@typeparam T
+@inject IHttpService HttpService
+@inject IJSRuntime JsRuntime
+
+<div>
+    <input type="text" @bind="_paginator.Query" @onfocus="ShowSelect" @onblur="HideSelect" @oninput="Search" placeholder="Vyhľadať..." class="form-control"/>
+    @if (_isSelectVisible)
+    {
+        <select @onwheel="OnScroll" @onchange="OnSelectChanged" size="10" style="width: 100%;" @ref="_selectElement" class="form-control">
+            @foreach (T item in _items)
+            {
+                <option value="@GetItemId(item)">@item?.ToString()</option>
+            }
+        </select>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ApiUrl { get; set; } = string.Empty;
+
+    [Parameter] 
+    public string Params { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<T> OnItemSelected { get; set; }
+
+    private PaginatedListDto<T> _paginatedList = new(new PaginatedList<T>(new List<T>(), 0, 0, 0, 0));
+    private List<T> _items = new();
+    private BasePaginator _paginator = new();
+    private int _totalPages = 1;
+    private bool _isSelectVisible = false;
+    private ElementReference _selectElement;
+    [Parameter]
+    public Guid? SelectedItemId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task Search(ChangeEventArgs e)
+    {
+        _paginator.Query = e.Value?.ToString();
+        _paginator.Page = 1; // Reset to the first page on a new search
+        _items.Clear(); // Clear current items
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var response = await HttpService.Get<PaginatedListDto<T>>($"{ApiUrl}?{_paginator.GetAsParams()}&{Params}");
+        if (response != null)
+        {
+            _paginatedList = response;
+            _items.AddRange(_paginatedList.Items);
+            _totalPages = _paginatedList.TotalPages;
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_paginator.Page < _totalPages)
+        {
+            _paginator.Page++;
+            await LoadData();
+        }
+    }
+
+    private async Task OnScroll(WheelEventArgs e)
+    {
+        // Check if all items for the current page are already loaded
+        if (_items.Count == _paginatedList.TotalItems)
+        {
+            return;
+        }
+
+        // Detect if scrolled to the bottom
+        var scrollHeight = await JsRuntime.InvokeAsync<int>("getScrollHeight", _selectElement);
+        var clientHeight = await JsRuntime.InvokeAsync<int>("getClientHeight", _selectElement);
+        var scrollTop = await JsRuntime.InvokeAsync<int>("getScrollTop", _selectElement);
+
+        if (scrollTop + clientHeight >= scrollHeight - 1)
+        {
+            // Load next page
+            await NextPage();
+        }
+    }
+
+    private async Task OnSelectChanged(ChangeEventArgs e)
+    {
+        // Get the selected item's ID
+        var selectedItemId = e.Value?.ToString();
+
+        // Find the selected item in the list
+        var selectedItem = _items.FirstOrDefault(item => GetItemId(item) == selectedItemId);
+
+        if (selectedItem != null)
+        {
+            // Set the search query to the selected item's name
+            _paginator.Query = selectedItem.ToString();
+
+            // Notify parent component about the selected item
+            await OnItemSelected.InvokeAsync(selectedItem);
+        }
+
+        // Hide the select element
+        _isSelectVisible = false;
+    }
+
+    private void ShowSelect(FocusEventArgs e)
+    {
+        _isSelectVisible = true;
+    }
+
+    private void HideSelect(FocusEventArgs e)
+    {
+        // Delay hiding the select so the change event can be processed
+        Task.Delay(200).ContinueWith(_ =>
+        {
+            if (_isSelectVisible) // this condition ensures select visibility is only changed if still visible
+            {
+                _isSelectVisible = false;
+                InvokeAsync(StateHasChanged);
+            }
+        });
+    }
+
+    // Helper method to get the Id property value from item
+    private string GetItemId(T item)
+    {
+        var property = typeof(T).GetProperty("Id");
+        return property?.GetValue(item)?.ToString() ?? string.Empty;
+    }
+}

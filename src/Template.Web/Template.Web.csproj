@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PublishFluentIconAssets>true</PublishFluentIconAssets>
+    <FluentIconSizes>10,12,16,20,24,28,32,48</FluentIconSizes>
+    <FluentIconVariants>Filled,Regular</FluentIconVariants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazor.Bootstrap" Version="3.2.0" />
+    <PackageReference Include="Blazor.QRCode" Version="0.2.1" />
+    <PackageReference Include="Blazor3D" Version="0.1.42" />
+    <PackageReference Include="Blazored.FluentValidation" Version="2.2.0" />
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
+    <PackageReference Include="Blazored.Modal" Version="7.3.1" />
+    <PackageReference Include="Blazored.Toast" Version="4.2.1" />
+    <PackageReference Include="FluentValidation" Version="11.10.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.0" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.10.4" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.10.4" />
+    <PackageReference Include="Plotly.Blazor" Version="5.3.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Template.Shared\Template.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Shared\Components\Danger\DangerCard.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\DangerReport\CreateReport.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\DangerReport\CreateReportPage.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\CreateIncident.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\FirstPage.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\SecondPage.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\UpdateFirstPage.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\UpdateIncident.razor" />
+    <_ContentIncludedByDefault Remove="Shared\Components\Incident\UpdateSecondPage.razor" />
+  </ItemGroup>
+
+</Project>

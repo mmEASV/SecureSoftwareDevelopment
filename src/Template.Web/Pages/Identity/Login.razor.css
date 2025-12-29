@@ -1,0 +1,116 @@
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-size: 12px;
+    background-image: url("login_blur_bckg.png");
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.login-container {
+    display: flex;
+    flex-direction: row;
+    padding: 1em;
+    background: rgba(255, 255, 255, 0.75);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    -webkit-box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1);
+    -moz-box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1);
+    box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1);
+    border-radius: 20px;
+    max-width: 864px;
+}
+
+.login-container img {
+    height: 550px;
+    max-width: 420px;
+    object-fit: cover;
+    object-position: 50% 0;
+    border-radius: 1em;
+}
+
+.login-form {
+    display: flex;
+    width: 440px;
+    flex-direction: column;
+    padding: 5vh;
+    text-align: center;
+    margin-top: 7em;
+}
+
+.login-form p {
+    color: #888888;
+}
+
+.appName {
+    color: #d1d1d1;
+    font-size: small;
+    margin-bottom: 2em;
+}
+
+.input-container {
+    display: flex;
+    flex-direction: column;
+    min-width: 20em;
+    margin-top: 4em;
+}
+
+.login-button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+@media only screen and (max-width: 875px) {
+    .login-container {
+        max-width: 700px;
+    }
+
+    .login-container img {
+        max-width: 338px;
+    }
+}
+
+@media only screen and (max-width: 700px) {
+    .login-page {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .login-form {
+        margin-top: 0;
+        box-shadow: none;
+        background-color: none;
+        background: none;
+        backdrop-filter: blur(0);
+    }
+
+    .login-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0;
+        margin: 1em;
+        border-radius: 8px;
+    }
+
+    .login-button {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .login-container img {
+        display: none;
+    }
+
+    .input-container {
+        margin-top: 1em;
+    }
+  }

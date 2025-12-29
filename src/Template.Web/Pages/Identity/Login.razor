@@ -1,0 +1,58 @@
+﻿@page "/login"
+@layout BlankLayout
+
+@using Template.Web.Application.Services
+@using Template.Shared.Dto
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<PageTitle>Login Page</PageTitle>
+
+<div class="login-page">
+    <div class="blur"></div>
+    <div class="login-container">
+        <img src="login_bozp.png">
+        <div class="login-form">
+            <h3><b>Log in</b></h3>
+            <p class="appName">Template</p>
+            <EditForm Model="@loginRequest" OnValidSubmit="LoginAsync">
+                <FluentValidationValidator />
+                <div class="input-container">
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="email" class="form-control" placeholder="E-mail"
+                               @bind="loginRequest.Email"/>
+                    </div>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control" placeholder="Heslo" @onkeyup="e => HitEnter(e)"
+                               @bind="loginRequest.Password"/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary w-100" type="submit">Prihlásiť</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new LoginRequest();
+    
+    private async Task HitEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") 
+            await LoginAsync();
+    }
+    
+    private async Task LoginAsync()
+    {
+        await AuthenticationService.Login(loginRequest.Email, loginRequest.Password, ComponentDetached);
+        ToastService.ShowSuccess("Successfully logged in.");
+        NavigationManager.NavigateTo("/", replace: true);
+    }
+}

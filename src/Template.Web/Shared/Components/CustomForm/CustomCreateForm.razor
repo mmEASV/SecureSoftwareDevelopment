@@ -1,0 +1,92 @@
+﻿@namespace Template.Web.Shared.Components.CustomForm
+
+@typeparam T
+
+@inherits CustomComponentBase
+
+@using System.Text.Json
+@using Template.Web.Application.Services
+@inject IHttpService HttpService
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<EditForm Model="@Object" class="form" OnValidSubmit="SubmitForm">
+    <FluentValidationValidator />
+    @ChildContent
+    <ValidationSummary />
+    <div>
+        <button type="submit" class="w-100 btn btn-primary">
+            Vytvoriť
+            <i class="bi bi-floppy"></i>
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>
+    /// Sets the object to be created.
+    /// </summary>
+    [Parameter]
+    public required object Object { get; set; }
+    
+    /// <summary>
+    /// Url to post the form to.
+    /// </summary>
+    [Parameter]
+    public required string PostUrl { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the content to be rendered inside the component.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    
+    /// <summary>
+    /// Url to redirect to after create.
+    /// </summary>
+    [Parameter]
+    public string? EditUrl { get; set; }
+
+    /// <summary>
+    /// Parameter for edit url
+    /// </summary>
+    [Parameter]
+    public string RouteParam { get; set; } = "Id";
+
+    public async Task SubmitForm()
+    {
+        try
+        {
+            var item = await HttpService.Post<T>($"{PostUrl}", Object);
+            ToastService.ShowSuccess("Úspešne vytvorené!");
+            await Task.Delay(1000);
+            if (EditUrl is not null)
+            {
+                if (item is not null)
+                {
+                    var id = item?.GetType().GetProperty(RouteParam)?.GetValue(item, null);
+                    if (EditUrl.Contains("{" + RouteParam + "}"))
+                    {
+                        NavigationManager.NavigateTo(EditUrl.Replace("{" + RouteParam + "}", $"{id}"), replace: true);
+                    } else
+                    {
+                        NavigationManager.NavigateTo($"{EditUrl}/{id}", replace: true);
+                    }
+                }
+                else
+                {
+                    NavigationManager.NavigateTo(EditUrl, replace:true);
+                }
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("history.back");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Vytvorenie zlyhalo: {ex.Message}");
+        }
+    }
+}
