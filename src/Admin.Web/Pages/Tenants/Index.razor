@@ -1,0 +1,14 @@
+﻿@page "/tenant"
+@using Admin.Shared.Dto.Tenant
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Tenant Page</PageTitle>
+
+<CustomCard Class="mb-2 d-flex flex-row justify-content-between">
+    <CustomPageLabel HideBack="true" 
+                     Title="Firmy"/>
+</CustomCard>
+
+<PaginatedListView GetUrl="/Tenant" T="TenantDto" CancellationToken="ComponentDetached">
+    <PropertyColumn TProp="string" TGridItem="TenantDto" Title="Meno a Priezvisko" Property="@(e => e.Name ?? "")"/>
+</PaginatedListView>

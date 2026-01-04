@@ -1,0 +1,28 @@
+@namespace Admin.Web.Shared.Components.Modals
+
+<div class="modal-content">
+    <div class="modal-body">
+        <p>Ste si istý že naozaj chcete vymazať?</p>
+    </div>
+    <div class="modal-footer gap-3">
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Zatvoriť</button>
+        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Vymazať</button>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = default!;
+    
+    [Parameter] public EventCallback<MouseEventArgs> OnDeleteConfirmed { get; set; }
+    
+    private async Task ConfirmDelete()
+    {
+        await OnDeleteConfirmed.InvokeAsync();
+        await ModalInstance.CloseAsync();
+    }
+    
+    private async Task Cancel()
+    {
+        await ModalInstance.CancelAsync();
+    }
+}

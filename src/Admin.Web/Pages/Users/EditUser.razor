@@ -1,0 +1,113 @@
+@page "/users/edit/{id:guid}"
+@using Admin.Shared.Dto.User
+@using Admin.Shared.Dto.Tenant
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject HttpClient Http
+
+<PageTitle>Edit User</PageTitle>
+
+<FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard Style="padding: 24px;">
+        <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 16px;">
+            <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Person())" Color="Color.Accent" />
+                <div>
+                    <h2 style="margin: 0;">Edit User</h2>
+                    <p style="margin: 4px 0 0 0; color: #605e5c;">Update user information</p>
+                </div>
+            </FluentStack>
+        </FluentStack>
+    </FluentCard>
+
+    @if (model == null)
+    {
+        <FluentCard Style="padding: 40px; text-align: center;">
+            <FluentProgressRing />
+            <p style="margin-top: 16px;">Loading user...</p>
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard Style="padding: 24px; max-width: 800px;">
+            <CustomEditForm T="UpdateUserDto"
+                           Object="@model"
+                           PutUrl="@($"/User/{Id}")">
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" @bind="model.Name" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" @bind="model.Surname" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" @bind="model.Email" />
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" @bind="model.Password" />
+                    <div class="form-text">Leave empty to keep current password</div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="form-label">Tenant</label>
+                    <select class="form-select" @bind="model.TenantId">
+                        <option value="">-- No Tenant --</option>
+                        @if (availableTenants != null)
+                        {
+                            @foreach (var tenant in availableTenants)
+                            {
+                                <option value="@tenant.Id">@tenant.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </CustomEditForm>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private UpdateUserDto? model;
+    private List<TenantDto>? availableTenants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load user details
+            var user = await Http.GetFromJsonAsync<UserDto>($"/User/{Id}");
+
+            if (user != null)
+            {
+                model = new UpdateUserDto
+                {
+                    Name = user.Name,
+                    Surname = user.Surname,
+                    Email = user.Email,
+                    TenantId = user.Owner?.Id
+                };
+            }
+
+            // Load available tenants
+            availableTenants = await Http.GetFromJsonAsync<List<TenantDto>>("/Tenant");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+    }
+}

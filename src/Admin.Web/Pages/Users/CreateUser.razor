@@ -1,0 +1,87 @@
+@page "/users/create"
+@using Admin.Shared.Dto.User
+@using Admin.Shared.Dto.Tenant
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject HttpClient Http
+
+<PageTitle>Create User</PageTitle>
+
+<FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard Style="padding: 24px;">
+        <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 16px;">
+            <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size32.PersonAdd())" Color="Color.Accent" />
+                <div>
+                    <h2 style="margin: 0;">Create New User</h2>
+                    <p style="margin: 4px 0 0 0; color: #605e5c;">Add a new user to the system</p>
+                </div>
+            </FluentStack>
+        </FluentStack>
+    </FluentCard>
+
+    <FluentCard Style="padding: 24px; max-width: 800px;">
+        <CustomCreateForm T="UserDto"
+                         Object="@model"
+                         PostUrl="/User"
+                         EditUrl="/users">
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" class="form-control" @bind="model.Name" required />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" @bind="model.Surname" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" @bind="model.Email" required />
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" @bind="model.Password" required />
+                <div class="form-text">Minimum 8 characters</div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="form-label">Tenant</label>
+                <select class="form-select" @bind="model.TenantId">
+                    <option value="">-- Select Tenant (Optional) --</option>
+                    @if (availableTenants != null)
+                    {
+                        @foreach (var tenant in availableTenants)
+                        {
+                            <option value="@tenant.Id">@tenant.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </CustomCreateForm>
+    </FluentCard>
+</FluentStack>
+
+@code {
+    private NewUserDto model = new NewUserDto();
+    private List<TenantDto>? availableTenants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            availableTenants = await Http.GetFromJsonAsync<List<TenantDto>>("/Tenant");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tenants: {ex.Message}");
+            availableTenants = new List<TenantDto>();
+        }
+    }
+}

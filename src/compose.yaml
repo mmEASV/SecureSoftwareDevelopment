@@ -1,25 +1,69 @@
 ﻿services:
-  template.api:
-    image: template.api
+  client.api:
+    image: client.api
     build:
       context: .
-      dockerfile: Template.Api/Dockerfile
-  template.web:
-    image: template.web
+      dockerfile: Client.Api/Dockerfile
+    networks:
+      - app-network
+
+  client.web:
+    image: client.web
     build:
       context: .
-      dockerfile: Template.Web/Dockerfile
+      dockerfile: Client.Web/Dockerfile
+    networks:
+      - app-network
+
+  server.api:
+    image: server.api
+    build:
+      context: .
+      dockerfile: Server.Api/Dockerfile
+    networks:
+      - app-network
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+    expose:
+      - "5000"
+
+  server.web:
+    image: server.web
+    build:
+      context: .
+      dockerfile: Server.Web/Dockerfile
+    networks:
+      - app-network
+
   postgres:
     image: postgres:latest
-    container_name: template-home
+    container_name: postgres-db
     environment:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=Template
+      - POSTGRES_DB=SecureSoftwareDevelopment
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-tunnel
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      - server.api
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:

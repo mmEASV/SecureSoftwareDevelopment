@@ -1,0 +1,164 @@
+@using Admin.Shared.Dto.File
+@using Admin.Web.Application.Services
+
+@inherits CustomComponentBase
+
+<InputFile OnChange="OnFileSelected" 
+           multiple="@AllowMultiple" class="@($"{Class} form-control mb-1")" />
+
+@if (!AutomaticUpload)
+{
+    <button @onclick="UploadFileAsync" class="btn btn-primary w-100 mb-3" disabled="@(!_isFileSelected || _isLoading)">
+        @if (_isLoading)
+        {
+            <span>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Nahrávanie...
+            </span>
+        }
+        else
+        {
+            <span>
+                <i class="bi bi-cloud-upload me-2"></i> Nahrať súbor
+            </span>
+        }
+    </button>
+}
+
+@code {
+    private IBrowserFile? _selectedFile;
+    private bool _isFileSelected = false;
+    private bool _isLoading = false;
+
+    [Parameter]
+    public required string GetPresignedUrl { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<FileUploadResult> OnFileUploadedCallback { get; set; }
+
+    [Parameter]
+    public bool AllowMultiple { get; set; } = false;
+    
+    [Parameter]
+    public bool AutomaticUpload { get; set; } = false;
+
+    [Inject]
+    IHttpService HttpService { get; set; } = null!;
+
+    [Inject]
+    IToastService ToastService { get; set; } = null!;
+
+    /// <summary>
+    /// Model to hold both upload result and original filename
+    /// </summary>
+    public class FileUploadResult
+    {
+        public UploadDto Upload { get; set; } = null!;
+        public string OriginalFileName { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Fired when a user selects a file through InputFile
+    /// </summary>
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        // Set the selected file
+        _selectedFile = e.File;
+        _isFileSelected = true;
+        
+        // If automatic upload is enabled, start the upload process immediately
+        if (AutomaticUpload && _selectedFile != null)
+        {
+            await UploadFileAsync();
+        }
+    }
+
+    /// <summary>
+    /// Handles the file upload process using a presigned URL
+    /// </summary>
+    private async Task UploadFileAsync()
+    {
+        if (_selectedFile == null)
+        {
+            ToastService.ShowError("Nebol vybratý žiadny súbor na nahratie.");
+            return;
+        }
+        
+        _isLoading = true;
+        string originalFileName = _selectedFile.Name;
+
+        UploadDto? uploadDto;
+        try
+        {
+            uploadDto = await HttpService.Get<UploadDto>($"{GetPresignedUrl}?fileName={_selectedFile.Name}");
+
+            if (uploadDto is null || string.IsNullOrEmpty(uploadDto.Url))
+            {
+                ToastService.ShowError("Nepodarilo sa získať URL pre nahratie súboru.");
+                _isLoading = false;
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            ToastService.ShowError("Chyba pri získavaní URL pre nahratie súboru.");
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            using (Stream fileStream = _selectedFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024))
+            {
+                using (var httpClient = new HttpClient())
+                {
+                    var content = new StreamContent(fileStream);
+
+                    var response = await httpClient.PutAsync(uploadDto.Url, content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        ToastService.ShowError($"Nepodarilo sa nahrať súbor; stav: {response.StatusCode}");
+                        _isLoading = false;
+                        return;
+                    }
+
+                    if (!AutomaticUpload)
+                    {
+                        ToastService.ShowSuccess("Súbor bol úspešne nahraný!");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Chyba pri nahrávaní súboru: {ex.Message}");
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            uploadDto = await HttpService.Get<UploadDto>($"Upload/{uploadDto.Id}");
+            if (uploadDto is null)
+            {
+                ToastService.ShowError("Nepodarilo sa potvrdiť nahranie súboru na serveri.");
+                _isLoading = false;
+                return;
+            }
+
+            var result = new FileUploadResult
+            {
+                Upload = uploadDto,
+                OriginalFileName = originalFileName
+            };
+
+            await OnFileUploadedCallback.InvokeAsync(result);
+        }
+        catch (Exception)
+        {
+            ToastService.ShowError("Chyba pri potvrdzovaní nahratia súboru na serveri.");
+        }
+
+        _isLoading = false;
+    }
+}

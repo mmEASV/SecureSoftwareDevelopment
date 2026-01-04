@@ -4,7 +4,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsAspireHost>true</IsAspireHost>
@@ -12,15 +12,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Hosting.AppHost" Version="9.3.0.0" />
+        <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.0" />
         <PackageReference Include="Aspire.Hosting.Docker" Version="9.3.0-preview.1.25265.20" />
-        <PackageReference Include="Aspire.Hosting.MongoDB" Version="9.3.0" />
-        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="9.3.0" />
+        <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.1.0" />
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Template.Api\Template.Api.csproj" />
-      <ProjectReference Include="..\Template.Web\Template.Web.csproj" />
+      <ProjectReference Include="..\Admin.Api\Admin.Api.csproj" />
+      <ProjectReference Include="..\Admin.Web\Admin.Web.csproj" />
+      <ProjectReference Include="..\ClientPortal.Api\ClientPortal.Api.csproj" />
+      <ProjectReference Include="..\ClientPortal.Web\ClientPortal.Web.csproj" />
+      <ProjectReference Include="..\ClientPortal.UpdateAgent\ClientPortal.UpdateAgent.csproj" />
     </ItemGroup>
 
 </Project>

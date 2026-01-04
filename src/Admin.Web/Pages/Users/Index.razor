@@ -1,0 +1,36 @@
+﻿@page "/users"
+@using Admin.Shared.Dto.User
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Users</PageTitle>
+
+<FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard Style="padding: 24px;">
+        <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Horizontal"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Style="justify-content: space-between;">
+            <div>
+                <h2 style="margin: 0;">Users</h2>
+                <p style="margin: 4px 0 0 0; color: #605e5c;">Manage system users</p>
+            </div>
+            <FluentButton Appearance="Appearance.Accent" Href="/users/create">
+                <FluentIcon Value="@(new Icons.Regular.Size20.PersonAdd())" Slot="start" />
+                Create User
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    <CustomCard>
+        <PaginatedListView GetUrl="/User" EditUrl="/users/edit" T="UserDto" CancellationToken="ComponentDetached">
+            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn TProp="string" TGridItem="UserDto" Property="@(e => e.Name)"/>
+            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn TProp="string" TGridItem="UserDto" Property="@(e => e.Surname)"/>
+            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn TProp="string" TGridItem="UserDto" Property="@(e => e.Username)"/>
+            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn TProp="string" TGridItem="UserDto" Property="@(e => e.Email)"/>
+            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn TProp="string" TGridItem="UserDto" Property="@(e => e.PhoneNumber ?? "")"/>
+            <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn TGridItem="UserDto" Title="Firma">
+                @context.Owner?.Name
+            </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+        </PaginatedListView>
+    </CustomCard>
+</FluentStack>

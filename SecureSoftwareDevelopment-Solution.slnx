@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/docs/" />
+  <Folder Name="/items/">
+    <File Path="src/compose.yaml" />
+    <File Path="README.md" />
+    <File Path="CLAUDE.md" />
+    <File Path=".gitignore" />
+    <File Path=".github/workflows/build-and-deploy.yml" />
+    <File Path="PROJECT_SUMMARY.md" />
+    <File Path="RENAMING_GUIDE.md" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Aspire/">
+    <Project Path="src/AppHost/AppHost.csproj" Type="C#" />
+    <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/src/Admin/">
+    <Project Path="src/Admin.Shared/Admin.Shared.csproj" Type="C#" />
+    <Project Path="src/Admin.Api/Admin.Api.csproj" Type="C#" />
+    <Project Path="src/Admin.Web/Admin.Web.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/src/ClientPortal/">
+    <Project Path="src/ClientPortal.Api/ClientPortal.Api.csproj" Type="C#" />
+    <Project Path="src/ClientPortal.Web/ClientPortal.Web.csproj" Type="C#" />
+    <Project Path="src/ClientPortal.UpdateAgent/ClientPortal.UpdateAgent.csproj" Type="C#" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Admin.Api.Tests/Admin.Api.Tests.csproj" Type="C#" />
+  </Folder>
+</Solution>

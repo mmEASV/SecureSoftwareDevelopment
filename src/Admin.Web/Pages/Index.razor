@@ -1,0 +1,68 @@
+@page "/"
+@page "/Home"
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Admin Portal - Home</PageTitle>
+
+<FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 30px;">
+    <FluentCard Style="padding: 40px;">
+        <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 16px;">
+            <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size48.CloudArrowUp())" Color="Color.Accent" />
+                <div>
+                    <h1 style="margin: 0;">Welcome to the Admin Portal</h1>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #605e5c;">
+                        Manage device updates and releases in compliance with the EU Cyber Resilience Act
+                    </p>
+                </div>
+            </FluentStack>
+        </FluentStack>
+    </FluentCard>
+
+    <FluentGrid Spacing="3">
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.CloudArrowUp())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Upload Updates</h3>
+                    <p style="color: #605e5c;">
+                        Upload new software updates with SHA-256 integrity verification and RSA-4096 digital signatures
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/upload-update">
+                        Upload Update
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.Document())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Manage Releases</h3>
+                    <p style="color: #605e5c;">
+                        Create and manage software releases, configure mandatory updates and postpone policies
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/manage-releases">
+                        Manage Releases
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Microsoft.FluentUI.AspNetCore.Components.Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.DataBarVertical())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Dashboard</h3>
+                    <p style="color: #605e5c;">
+                        Monitor deployment status, device statistics, and update metrics across all customers
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/dashboard">
+                        View Dashboard
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+</FluentStack>

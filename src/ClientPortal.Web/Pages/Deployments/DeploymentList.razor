@@ -1,0 +1,96 @@
+@page "/deployments"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using ClientPortal.Web.Application.Services
+@inject UpdateServiceClient UpdateService
+
+<PageTitle>Deployments</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <h1>Update Deployments</h1>
+        <p>Monitor and manage update deployments across your devices</p>
+    </FluentCard>
+
+    @if (deployments == null)
+    {
+        <FluentProgressRing />
+    }
+    else if (!deployments.Any())
+    {
+        <FluentMessageBar Intent="MessageIntent.Info">
+            No deployments scheduled yet.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <FluentDataGrid Items="@deployments.AsQueryable()" GridTemplateColumns="2fr 1fr 1fr 1fr 1fr 1fr">
+            <PropertyColumn Property="@(d => d.Device!.DeviceName)" Title="Device" Sortable="true" />
+            <PropertyColumn Property="@(d => d.Release!.Update!.Version)" Title="Version" Sortable="true" />
+            <PropertyColumn Property="@(d => d.ScheduledAt)" Title="Scheduled" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+            <TemplateColumn Title="Status" Sortable="true">
+                <FluentBadge Appearance="@GetStatusBadgeAppearance(context.Status)">
+                    @context.Status
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Progress">
+                @if (context.Status == DeploymentStatus.Downloading && context.DownloadProgress.HasValue)
+                {
+                    <FluentProgress Value="@context.DownloadProgress.Value" Min="0" Max="100" />
+                }
+                else if (context.Status == DeploymentStatus.Installing && context.InstallProgress.HasValue)
+                {
+                    <FluentProgress Value="@context.InstallProgress.Value" Min="0" Max="100" />
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                @if (context.Status == DeploymentStatus.Pending)
+                {
+                    <FluentButton Appearance="Appearance.Neutral"
+                                 OnClick="@(() => PostponeDeployment(context))">
+                        Postpone
+                    </FluentButton>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</FluentStack>
+
+@code {
+    private List<DeploymentDto> deployments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        deployments = await UpdateService.GetDeploymentsAsync();
+    }
+
+    private async Task PostponeDeployment(DeploymentDto deployment)
+    {
+        var postponeDto = new PostponeDeploymentDto
+        {
+            PostponeUntil = DateTime.UtcNow.AddDays(3),
+            Reason = "User requested postpone"
+        };
+
+        var success = await UpdateService.PostponeDeploymentAsync(deployment.Id, postponeDto);
+        if (success)
+        {
+            await OnInitializedAsync(); // Refresh
+        }
+    }
+
+    private Appearance GetStatusBadgeAppearance(DeploymentStatus status)
+    {
+        return status switch
+        {
+            DeploymentStatus.Pending => Appearance.Neutral,
+            DeploymentStatus.Downloading => Appearance.Accent,
+            DeploymentStatus.Installing => Appearance.Accent,
+            DeploymentStatus.Completed => Appearance.Accent,
+            DeploymentStatus.Failed => Appearance.Accent,
+            DeploymentStatus.Postponed => Appearance.Neutral,
+            DeploymentStatus.Cancelled => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+}

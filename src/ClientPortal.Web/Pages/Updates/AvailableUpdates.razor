@@ -1,0 +1,97 @@
+@page "/updates"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using ClientPortal.Web.Application.Services
+@inject UpdateServiceClient UpdateService
+@inject NavigationManager Navigation
+
+<PageTitle>Available Updates</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <h1>Available Updates</h1>
+        <p>View available software updates for your devices</p>
+    </FluentCard>
+
+    @if (releases == null)
+    {
+        <FluentProgressRing />
+    }
+    else if (!releases.Any())
+    {
+        <FluentMessageBar Intent="MessageIntent.Info">
+            No updates available at this time.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <FluentDataGrid Items="@releases.AsQueryable()" GridTemplateColumns="1fr 2fr 1fr 1fr 1fr 1fr">
+            <PropertyColumn Property="@(r => r.Update!.Version)" Title="Version" Sortable="true" />
+            <PropertyColumn Property="@(r => r.Update!.Title)" Title="Title" Sortable="true" />
+            <TemplateColumn Title="Type" Sortable="true">
+                <FluentBadge Appearance="@GetUpdateTypeBadgeAppearance(context.Update!.UpdateType)">
+                    @context.Update!.UpdateType
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Severity" Sortable="true">
+                <FluentBadge Appearance="@GetSeverityBadgeAppearance(context.Update!.Severity)">
+                    @context.Update!.Severity
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Mandatory" Sortable="true">
+                @if (context.IsMandatory)
+                {
+                    <FluentBadge Appearance="Appearance.Accent">Yes</FluentBadge>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Lightweight">No</FluentBadge>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <FluentButton Appearance="Appearance.Accent"
+                             OnClick="@(() => ViewDetails(context))">
+                    View Details
+                </FluentButton>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</FluentStack>
+
+@code {
+    private List<ReleaseDto> releases = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        releases = await UpdateService.GetActiveReleasesAsync();
+    }
+
+    private void ViewDetails(ReleaseDto release)
+    {
+        Navigation.NavigateTo($"/updates/{release.Id}");
+    }
+
+    private Appearance GetUpdateTypeBadgeAppearance(UpdateType type)
+    {
+        return type switch
+        {
+            UpdateType.Security => Appearance.Accent,
+            UpdateType.BugFix => Appearance.Neutral,
+            UpdateType.Feature => Appearance.Accent,
+            UpdateType.Performance => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetSeverityBadgeAppearance(UpdateSeverity severity)
+    {
+        return severity switch
+        {
+            UpdateSeverity.Critical => Appearance.Accent,
+            UpdateSeverity.High => Appearance.Accent,
+            UpdateSeverity.Medium => Appearance.Neutral,
+            UpdateSeverity.Low => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+}

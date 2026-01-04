@@ -1,0 +1,57 @@
+@using Admin.Shared.Dto
+@using Admin.Web.Application.Services
+@using System.IdentityModel.Tokens.Jwt
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+
+<div class="w-100 d-flex">
+    <div class="btn btn-light d-flex container-fluid flex-row gap-2 p-0" style="cursor: pointer" @onclick="@(_ => EditProfile(_user?.UserId ?? new Guid()))">
+        <div class="text-bg-primary rounded d-flex justify-content-center align-items-center col-auto" style="width: 50px;height: 50px">
+            <i class="bi bi-person-vcard" style="font-size: 25px"></i>
+        </div>
+        <div class="col d-flex flex-column justify-content-center text-start">
+            <span class="fw-bold">
+                Používateľ
+            </span>
+            <span class="fw-light small">
+                @_user?.Email
+            </span>
+        </div>
+        <div class="col-auto d-flex justify-content-center align-items-center me-2">
+            <button class="btn btn-light shadow-sm" @onclick="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AuthResponse? _user;
+    protected override void OnInitialized()
+    {
+        if (AuthenticationService.User != null)
+        {
+            _user = AuthenticationService.User;
+            var jwt = _user.Token;
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(jwt);
+            if(token.ValidTo < DateTime.UtcNow)
+            {
+                NavigationManager.NavigateTo("/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+    private void EditProfile(Guid id)
+    {
+        NavigationManager.NavigateTo($"/profile/{id}", replace: true);
+    }
+    private async Task Logout()
+    {
+        await AuthenticationService.Logout();
+        _user = new AuthResponse(){Email = "Not logged in",Token = "Not logged in",UserId = Guid.Empty};
+    }
+}

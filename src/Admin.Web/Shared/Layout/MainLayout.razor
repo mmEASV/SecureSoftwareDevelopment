@@ -1,0 +1,65 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits LayoutComponentBase
+@inject IToastService ToastService
+
+<FluentLayout>
+    <FluentHeader Style="background-color: #0078d4; color: white; padding: 16px 24px;">
+        <FluentLabel Typo="Typography.H4" Style="color: white; margin: 0;">
+            <FluentIcon Value="@(new Icons.Regular.Size24.CloudArrowUp())" Style="color: white; margin-right: 8px;" />
+            Admin Portal - CRA Update Management
+        </FluentLabel>
+    </FluentHeader>
+
+    <div class="container-fluid" style="min-height: calc(100vh - 120px);">
+        <div class="row h-100">
+            <div class="col-md-2 col-lg-2" style="background-color: #f3f2f1; padding: 16px;">
+                <FluentNavMenu>
+                    <FluentNavLink Href="/" Icon="@(new Icons.Regular.Size20.Home())" Match="NavLinkMatch.All">
+                        Home
+                    </FluentNavLink>
+                    <FluentNavLink Href="/updates/upload" Icon="@(new Icons.Regular.Size20.CloudArrowUp())">
+                        Upload Updates
+                    </FluentNavLink>
+                    <FluentNavLink Href="/manage-releases" Icon="@(new Icons.Regular.Size20.Document())">
+                        Manage Releases
+                    </FluentNavLink>
+                    <FluentNavLink Href="/dashboard" Icon="@(new Icons.Regular.Size20.DataBarVertical())">
+                        Dashboard
+                    </FluentNavLink>
+                </FluentNavMenu>
+            </div>
+
+            <div class="col-md-10 col-lg-10" style="padding: 24px;">
+                <ErrorBoundary @ref="errorBoundary">
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
+                    <ErrorContent>
+                        <FluentMessageBar Intent="MessageIntent.Error">
+                            <p>Something went wrong: @context.Message</p>
+                        </FluentMessageBar>
+                        @{ ToastService.ShowError(@context.Message); }
+                    </ErrorContent>
+                </ErrorBoundary>
+                <FluentDialogProvider />
+            </div>
+        </div>
+    </div>
+
+    <FluentFooter Style="background-color: #f3f2f1; padding: 16px 24px; text-align: center;">
+        <p style="margin: 0; color: #605e5c;">
+            &copy; 2025 Vendor Update Management System - CRA Compliant
+        </p>
+    </FluentFooter>
+</FluentLayout>
+
+<BlazoredToasts Position="ToastPosition.TopRight" />
+
+@code {
+    private ErrorBoundary? errorBoundary;
+
+    protected override void OnParametersSet()
+    {
+        errorBoundary?.Recover();
+    }
+}

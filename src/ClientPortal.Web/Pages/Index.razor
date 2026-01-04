@@ -1,0 +1,66 @@
+@page "/"
+
+<PageTitle>Customer Portal - Home</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 30px;">
+    <FluentCard Style="padding: 40px;">
+        <FluentStack Orientation="Orientation.Vertical" Style="gap: 16px;">
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <FluentIcon Value="@(new Icons.Regular.Size48.CloudCheckmark())" Color="Color.Accent" />
+                <div>
+                    <h1 style="margin: 0;">Welcome to the Customer Portal</h1>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #605e5c;">
+                        Manage your devices and software updates in compliance with the EU Cyber Resilience Act
+                    </p>
+                </div>
+            </FluentStack>
+        </FluentStack>
+    </FluentCard>
+
+    <FluentGrid Spacing="3">
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.CloudCheckmark())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Automatic Updates</h3>
+                    <p style="color: #605e5c;">
+                        Updates are enabled by default for all your devices, ensuring security and compliance.
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/devices">
+                        Manage Devices
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.Shield())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Security First</h3>
+                    <p style="color: #605e5c;">
+                        Critical security updates are prioritized to protect your devices from vulnerabilities.
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/updates">
+                        View Updates
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+
+        <FluentGridItem xs="12" sm="6" md="4">
+            <FluentCard Style="height: 100%; padding: 24px;">
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size32.Calendar())" Color="Color.Accent" />
+                    <h3 style="margin: 0;">Flexible Scheduling</h3>
+                    <p style="color: #605e5c;">
+                        Schedule updates during maintenance windows or postpone non-critical updates as needed.
+                    </p>
+                    <FluentButton Appearance="Appearance.Accent" Href="/deployments">
+                        View Deployments
+                    </FluentButton>
+                </FluentStack>
+            </FluentCard>
+        </FluentGridItem>
+    </FluentGrid>
+</FluentStack>

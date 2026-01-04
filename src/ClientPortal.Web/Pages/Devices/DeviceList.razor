@@ -1,0 +1,74 @@
+@page "/devices"
+@using Admin.Shared.Dto
+@using ClientPortal.Web.Application.Services
+@inject UpdateServiceClient UpdateService
+@inject NavigationManager Navigation
+
+<PageTitle>My Devices</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+            <h1 style="flex: 1;">My Devices</h1>
+            <FluentButton Appearance="Appearance.Accent" OnClick="RegisterNewDevice">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Slot="start" />
+                Register Device
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (devices == null)
+    {
+        <FluentProgressRing />
+    }
+    else if (!devices.Any())
+    {
+        <FluentMessageBar Intent="MessageIntent.Info">
+            No devices registered yet. Register your first device to get started.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <FluentDataGrid Items="@devices.AsQueryable()" GridTemplateColumns="2fr 1fr 1fr 1fr 1fr 1fr">
+            <PropertyColumn Property="@(d => d.DeviceName)" Title="Device Name" Sortable="true" />
+            <PropertyColumn Property="@(d => d.DeviceType)" Title="Type" Sortable="true" />
+            <PropertyColumn Property="@(d => d.DeviceIdentifier)" Title="Identifier" Sortable="true" />
+            <PropertyColumn Property="@(d => d.CurrentVersion)" Title="Version" Sortable="true" />
+            <TemplateColumn Title="Auto Updates" Sortable="true">
+                @if (context.AutomaticUpdates)
+                {
+                    <FluentBadge Appearance="Appearance.Accent">Enabled</FluentBadge>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Neutral">Disabled</FluentBadge>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <FluentButton Appearance="Appearance.Accent"
+                             OnClick="@(() => ManageDevice(context))">
+                    Manage
+                </FluentButton>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</FluentStack>
+
+@code {
+    private List<DeviceDto> devices = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        devices = await UpdateService.GetDevicesAsync();
+    }
+
+    private void RegisterNewDevice()
+    {
+        Navigation.NavigateTo("/devices/register");
+    }
+
+    private void ManageDevice(DeviceDto device)
+    {
+        Navigation.NavigateTo($"/devices/{device.Id}");
+    }
+}

@@ -1,285 +1,371 @@
-<a id="readme-top"></a>
+# CRA-Compliant Automated Device Update System
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
+> **A proof-of-concept implementation demonstrating EU Cyber Resilience Act (CRA) compliance for automatic security updates**
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://github.com/Yet-another-solution/Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=for-the-badge&logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
-<h3 align="center">project_title</h3>
+---
 
-  <p align="center">
-    A modern .NET 9.0 Aspire application template with Blazor WebAssembly frontend, ASP.NET Core API backend, and PostgreSQL database
-    <br />
-    <a href="https://github.com/Yet-another-solution/Template"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/Yet-another-solution/Template/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/Yet-another-solution/Template/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
-  </p>
-</div>
+## 📋 Table of Contents
 
+- [Problem Statement](#problem-statement)
+- [Solution](#solution)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [CRA Compliance](#cra-compliance)
+- [Documentation](#documentation)
 
+---
 
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
+## 🎯 Problem Statement
 
+Currently the client updates all of the deployed devices manually with flash drives. This kind of worked in the past, but it is slow and doesn't meet the new **Cyber Resilience Act (CRA)** requirements.
 
+The CRA says manufacturers need to provide automatic security updates by default.
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+### CRA Requirements (Annex 1 - 2, c)
 
-This is a modern .NET 9.0 Aspire application template that provides a complete full-stack solution with:
+According to the regulation:
 
-- **Blazor WebAssembly** frontend with FluentUI components
-- **ASP.NET Core Web API** backend with JWT authentication
-- **PostgreSQL** database with Entity Framework Core
-- **Docker** containerization and orchestration via .NET Aspire
-- **Automated CI/CD** pipeline with GitHub Actions
+> ensure that vulnerabilities can be addressed through security updates, including, where applicable, through automatic security updates that are installed within an appropriate timeframe enabled as a default setting, with a clear and easy-to-use opt-out mechanism, through the notification of available updates to users, and the option to temporarily postpone them;
 
-The template includes user management, authentication, validation, logging, and testing infrastructure to help you quickly bootstrap modern web applications.
+**Key Requirements:**
+- ✅ Automatic security updates enabled by default
+- ✅ Clear and easy opt-out mechanism
+- ✅ Notification of available updates
+- ✅ Option to temporarily postpone updates
+- ✅ Appropriate timeframe for security patches
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
-### Built With
+## 💡 Solution
 
-* [![.NET][DotNet]][DotNet-url]
-* [![Blazor][Blazor]][Blazor-url]
-* [![PostgreSQL][PostgreSQL]][PostgreSQL-url]
-* [![Docker][Docker]][Docker-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
+The client needs a solution for **semi-automatic updates**, where they can release updates, but it will be up to their customers to deploy them.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**The system provides:**
 
+1. **Vendor Portal (Admin.Api + Admin.Web)**
+   - Web app for the vendor to upload new updates
+   - Create and manage releases
+   - Monitor device deployment status
 
+2. **Customer Portal (ClientPortal.Api + ClientPortal.Web)**
+   - Web portal for customers to view available updates
+   - Schedule deployment of software updates
+   - Configure automatic update settings
+   - Postpone updates with reason tracking
 
-<!-- GETTING STARTED -->
-## Getting Started
+3. **Device Agent (ClientPortal.UpdateAgent)**
+   - Background service on customer devices
+   - Automatically checks for and installs updates
+   - Verifies update integrity and authenticity
 
-To get this .NET Aspire application running locally, follow these steps:
+4. **Secure Delivery**
+   - SHA-256 file integrity verification
+   - RSA-4096 digital signatures
+   - HTTPS/TLS transport encryption
+   - Cloudflare Tunnel support
+
+---
+
+## ✨ Features
+
+### CRA Compliance
+
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| Default automatic updates | ✅ | `Device.AutomaticUpdates = true` on registration |
+| Easy opt-out | ✅ | Device settings API endpoint |
+| Update notifications | ✅ | Customer portal lists all updates |
+| Postpone capability | ✅ | Deployment postpone API with reason |
+| Timeframe enforcement | ✅ | Max 7-day postpone for mandatory updates |
+| Security transparency | ✅ | CVE lists, changelogs, severity levels |
+
+### Technical Features
+
+- **Separated APIs** - Admin.Api (vendor) and ClientPortal.Api (customer)
+- **Shared Database** - Single PostgreSQL database for data consistency
+- **File Upload** - Multipart form-data with SHA-256 hashing
+- **Digital Signatures** - RSA-4096 for update authenticity
+- **Deployment Tracking** - Status, retry count, postpone tracking
+- **Tenant Isolation** - Multi-tenant support
+- **Comprehensive Testing** - 128 tests covering all features
+
+---
+
+## 🏗️ Architecture
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     VENDOR SIDE (Admin)                      │
+├─────────────────────────────────────────────────────────────┤
+│  Admin.Api          - Upload updates, create releases       │
+│  Admin.Web          - Vendor admin portal (Blazor WASM)     │
+│  Admin.Shared       - Shared models and DTOs                │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                   CUSTOMER SIDE (ClientPortal)               │
+├─────────────────────────────────────────────────────────────┤
+│  ClientPortal.Api   - View releases, manage devices         │
+│  ClientPortal.Web   - Customer portal (Blazor WASM)         │
+│  ClientPortal.UpdateAgent - Device agent (background svc)   │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                     SHARED INFRASTRUCTURE                    │
+├─────────────────────────────────────────────────────────────┤
+│  PostgreSQL         - Shared database (AdminDb)             │
+│  .NET Aspire        - Service orchestration                 │
+│  Cloudflare Tunnel  - Secure remote access                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Technology Stack
+
+- **.NET 10.0** - Application framework
+- **ASP.NET Core Minimal APIs** - Backend APIs
+- **Blazor WebAssembly** - Frontend portals
+- **Entity Framework Core** - Data access
+- **PostgreSQL** - Database
+- **.NET Aspire** - Orchestration
+- **FluentUI** - UI components
+- **xUnit** - Testing framework
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-Make sure you have the following installed:
-
-* **.NET 9.0 SDK** - [Download here](https://dotnet.microsoft.com/download/dotnet/9.0)
-* **Docker Desktop** - [Download here](https://www.docker.com/products/docker-desktop/)
-* **Git** - [Download here](https://git-scm.com/downloads)
+- **.NET 10.0 SDK** - [Download here](https://dotnet.microsoft.com/download/dotnet/10.0)
+- **Docker Desktop** - [Download here](https://www.docker.com/products/docker-desktop/)
+- **Git** - [Download here](https://git-scm.com/downloads)
 
 ### Installation
 
-1. Clone the repository
-   ```sh
-   git clone https://github.com/Yet-another-solution/Template.git
-   cd Template
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd SecureSoftwareDevelopment
    ```
 
-2. Restore .NET packages
-   ```sh
+2. **Restore packages**
+   ```bash
    dotnet restore
    ```
 
-3. Start Docker Desktop (required for PostgreSQL)
+3. **Start Docker Desktop** (required for PostgreSQL)
 
-4. **Run the application using .NET Aspire**
-   ```sh
+4. **Configure Aspire secrets** (optional)
+   ```bash
+   cd src/AppHost
+   dotnet user-secrets set "Parameters:postgres-username" "root"
+   dotnet user-secrets set "Parameters:postgres-password" "password"
+   ```
+
+5. **Run with .NET Aspire**
+   ```bash
    cd src/AppHost
    dotnet run
    ```
 
-5. Access the application:
-   - **Aspire Dashboard**: https://localhost:15068 (shows all services and their status)
-   - **Web Application**: Check the Aspire dashboard for the assigned port
-   - **API**: Check the Aspire dashboard for the assigned port
+6. **Access the application**
+   - **Aspire Dashboard**: https://localhost:15068 (view all services)
+   - **Admin API**: Check dashboard for port (usually 7100)
+   - **Admin API Docs**: https://localhost:7100/swagger
+   - **ClientPortal API**: Check dashboard for port (usually 7200)
+   - **ClientPortal API Docs**: https://localhost:7200/swagger
+   - **Admin Web**: Check dashboard for port
+   - **ClientPortal Web**: Check dashboard for port
 
-### Alternative: Running Individual Services
+---
 
-If you prefer to run services individually:
-
-```sh
-# Terminal 1: Start PostgreSQL
-docker-compose -f src/compose.yaml up postgres
-
-# Terminal 2: Run the API
-cd src/Template.Api
-dotnet run
-
-# Terminal 3: Run the Web app
-cd src/Template.Web
-dotnet run
-```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- USAGE EXAMPLES -->
-## Usage
+## 📖 Usage
 
 ### Development Commands
 
-```sh
+```bash
 # Build the solution
 dotnet build
 
-# Run tests
+# Run tests (128 tests)
 dotnet test
 
-# Build for production
-dotnet build --configuration Release
+# Run specific test project
+dotnet test tests/Admin.Api.Tests/
 
-# Database migrations (from Template.Api directory)
-cd src/Template.Api
+# Database migrations
+cd src/Admin.Api
 dotnet ef migrations add <MigrationName>
 dotnet ef database update
+
+# Clean build artifacts
+dotnet clean
 ```
 
 ### Project Structure
 
-- **src/AppHost/** - .NET Aspire orchestration project (main entry point)
-- **src/Template.Api/** - ASP.NET Core Web API backend
-- **src/Template.Web/** - Blazor WebAssembly frontend
-- **src/Template.Shared/** - Shared models and DTOs
-- **src/ServiceDefaults/** - Common Aspire service configurations
-- **tests/Template.Api.Tests/** - Unit tests for the API
+```
+src/
+├── Admin.Api/              # Vendor backend API
+├── Admin.Web/              # Vendor portal (Blazor WASM)
+├── Admin.Shared/           # Shared models and DTOs
+├── ClientPortal.Api/       # Customer backend API
+├── ClientPortal.Web/       # Customer portal (Blazor WASM)
+├── ClientPortal.UpdateAgent/ # Device agent
+├── AppHost/                # .NET Aspire orchestration
+└── ServiceDefaults/        # Common configurations
 
-### Key Features
+tests/
+└── Admin.Api.Tests/        # Test suite (128 tests)
+```
 
-- **Authentication**: JWT-based authentication with user registration/login
-- **Database**: PostgreSQL with Entity Framework Core migrations
-- **UI Components**: FluentUI and Bootstrap components
-- **Validation**: FluentValidation on both client and server
-- **Logging**: Structured logging with Serilog
-- **Testing**: xUnit tests with NSubstitute mocking
-- **Containerization**: Docker support with multi-arch builds
+### API Endpoints
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Admin.Api (Vendor Operations):**
+```
+POST   /api/updates              # Upload new update
+GET    /api/updates              # List all updates
+GET    /api/updates/{id}/download # Download update file
+POST   /api/releases             # Create release
+GET    /api/releases             # List all releases
+```
 
+**ClientPortal.Api (Customer Operations):**
+```
+GET    /api/releases/active      # View active releases
+POST   /api/devices              # Register device
+PUT    /api/devices/{id}/settings # Configure auto-updates
+POST   /api/deployments/schedule # Schedule deployment
+PUT    /api/deployments/{id}/postpone # Postpone deployment
+```
 
+---
 
-<!-- ROADMAP -->
-## Roadmap
+## ✅ CRA Compliance
 
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
+### How It Works
 
-See the [open issues](https://github.com/Yet-another-solution/Template/issues) for a full list of proposed features (and known issues).
+1. **Default Automatic Updates**
+   - All devices registered with `AutomaticUpdates = true` by default
+   - Complies with CRA requirement for default automatic updates
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+2. **Clear Opt-Out Mechanism**
+   - Device settings endpoint allows disabling automatic updates
+   - Customer portal provides UI to configure settings
 
+3. **Update Notifications**
+   - Customer portal lists all available updates
+   - Shows severity, CVE lists, changelogs
 
+4. **Postpone Capability**
+   - Customers can postpone deployments with reason
+   - System tracks postpone count and reasons
 
-<!-- CONTRIBUTING -->
-## Contributing
+5. **Appropriate Timeframe**
+   - Mandatory security updates have 7-day max postpone period
+   - Enforced at API level to ensure compliance
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+6. **Security Transparency**
+   - All updates show CVE lists
+   - Severity levels (Critical, High, Medium, Low)
+   - Detailed changelogs and security fixes
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+### Compliance Verification
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Run the CRA compliance integration tests:
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+```bash
+dotnet test --filter "Category=CRACompliance"
+```
 
-### Top contributors:
+All 10 CRA compliance tests verify:
+- Default automatic updates
+- Opt-out functionality
+- Postpone mechanism
+- Mandatory update enforcement
+- Security transparency
 
-<a href="https://github.com/Yet-another-solution/Template/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Yet-another-solution/Template" alt="contrib.rocks image" />
-</a>
+---
 
+## 📚 Documentation
 
+- **[CLAUDE.md](CLAUDE.md)** - Comprehensive architecture guide and development commands
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - High-level overview and feature summary
+- **[ASPIRE_DATABASE_FIXES.md](ASPIRE_DATABASE_FIXES.md)** - Database setup troubleshooting
 
-<!-- LICENSE -->
-## License
+---
 
-Distributed under the project_license. See `LICENSE.txt` for more information.
+## 🧪 Testing
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Test Coverage: 128 Tests**
 
+- ✅ 96 Repository tests (CRUD operations)
+- ✅ 13 File storage tests (integrity verification)
+- ✅ 9 API endpoint tests (behavior validation)
+- ✅ 10 CRA compliance tests (regulatory requirements)
 
+Run all tests:
+```bash
+dotnet test
+# Passed!  - Failed: 0, Passed: 128, Skipped: 0, Total: 128
+```
 
-<!-- CONTACT -->
-## Contact
+---
 
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - email@email_client.com
+## 🔒 Security
 
-Project Link: [https://github.com/Yet-another-solution/Template](https://github.com/Yet-another-solution/Template)
+**Security Layers:**
+1. API Key Authentication (device authentication)
+2. SHA-256 File Hashing (integrity verification)
+3. RSA-4096 Digital Signatures (authenticity verification)
+4. TLS/HTTPS (transport encryption)
+5. Tenant Isolation (database-level separation)
+6. Cloudflare Tunnel (secure remote access)
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Production Considerations:**
+- Hash API keys before storage
+- Implement rate limiting
+- Add DDoS protection
+- Use certificate-based device auth
+- Encrypt files at rest
+- Security scan uploaded files
 
+---
 
+## 📝 License
 
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
+This is an educational project demonstrating CRA compliance principles.
 
-* []()
-* []()
-* []()
+**Recommended for:**
+- ✅ Learning CRA compliance
+- ✅ Architecture reference
+- ✅ Starting point for production systems
+- ✅ Academic/research purposes
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Before production use:**
+- Security audit and penetration testing
+- Implement production-grade authentication
+- Add monitoring and alerting
+- Set up proper CI/CD pipeline
 
+---
 
+## 🙏 Acknowledgments
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/Yet-another-solution/Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/Yet-another-solution/Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Yet-another-solution/Template.svg?style=for-the-badge
-[forks-url]: https://github.com/Yet-another-solution/Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/Yet-another-solution/Template.svg?style=for-the-badge
-[stars-url]: https://github.com/Yet-another-solution/Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Yet-another-solution/Template.svg?style=for-the-badge
-[issues-url]: https://github.com/Yet-another-solution/Template/issues
-[license-shield]: https://img.shields.io/github/license/Yet-another-solution/Template.svg?style=for-the-badge
-[license-url]: https://github.com/Yet-another-solution/Template/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/linkedin_username
-[product-screenshot]: images/screenshot.png
-[DotNet]: https://img.shields.io/badge/.NET-512BD4?style=for-the-badge&logo=dotnet&logoColor=white
-[DotNet-url]: https://dotnet.microsoft.com/
-[Blazor]: https://img.shields.io/badge/Blazor-512BD4?style=for-the-badge&logo=blazor&logoColor=white
-[Blazor-url]: https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor
-[PostgreSQL]: https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white
-[PostgreSQL-url]: https://www.postgresql.org/
-[Docker]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
-[Docker-url]: https://www.docker.com/
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
+- **EU Cyber Resilience Act** - Regulatory framework
+- **.NET Foundation** - ASP.NET Core, Blazor, EF Core
+- **Microsoft** - .NET Aspire, FluentUI
+- **Cloudflare** - Secure tunneling solution
+
+---
+
+**Built with .NET 10.0 | January 2025**

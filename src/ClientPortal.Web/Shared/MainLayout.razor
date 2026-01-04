@@ -1,0 +1,41 @@
+@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader Style="background-color: #0078d4; color: white; padding: 16px 24px;">
+        <FluentLabel Typo="Typography.H4" Style="color: white; margin: 0;">
+            <FluentIcon Value="@(new Icons.Regular.Size24.CloudCheckmark())" Style="color: white; margin-right: 8px;" />
+            Customer Portal - CRA Update Management
+        </FluentLabel>
+    </FluentHeader>
+
+    <div class="container-fluid p-0" style="min-height: calc(100vh - 120px);">
+        <div class="row g-0 h-100">
+            <div class="col-md-2 col-lg-2" style="background-color: #f3f2f1; padding: 16px; min-height: calc(100vh - 120px);">
+                <FluentNavMenu>
+                    <FluentNavLink Href="/" Match="NavLinkMatch.All" Icon="@(new Icons.Regular.Size20.Home())">
+                        Home
+                    </FluentNavLink>
+                    <FluentNavLink Href="/updates" Icon="@(new Icons.Regular.Size20.CloudArrowUp())">
+                        Updates
+                    </FluentNavLink>
+                    <FluentNavLink Href="/devices" Icon="@(new Icons.Regular.Size20.Phone())">
+                        Devices
+                    </FluentNavLink>
+                    <FluentNavLink Href="/deployments" Icon="@(new Icons.Regular.Size20.Rocket())">
+                        Deployments
+                    </FluentNavLink>
+                </FluentNavMenu>
+            </div>
+
+            <div class="col-md-10 col-lg-10" style="padding: 24px;">
+                @Body
+            </div>
+        </div>
+    </div>
+
+    <FluentFooter Style="background-color: #f3f2f1; padding: 16px 24px; text-align: center;">
+        <p style="margin: 0; color: #605e5c;">
+            &copy; 2025 Vendor Update Management System - CRA Compliant
+        </p>
+    </FluentFooter>
+</FluentLayout>

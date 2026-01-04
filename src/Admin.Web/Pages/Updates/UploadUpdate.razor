@@ -1,0 +1,207 @@
+@page "/updates/upload"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text.Json
+@using Microsoft.FluentUI.AspNetCore.Components
+@using ButtonType = Microsoft.FluentUI.AspNetCore.Components.ButtonType
+@using Orientation = Microsoft.FluentUI.AspNetCore.Components.Orientation
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+<PageTitle>Upload Update</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Width="100%">
+    <h2>Upload New Update</h2>
+
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" class="w-100">
+        <FluentCard Style="max-width: 800px;">
+            <FluentStack Orientation="Orientation.Vertical">
+                <div class="form-group w-100">
+                    <label>Version *</label>
+                    <input type="text" class="form-control" @bind="model.Version" placeholder="1.0.0" required />
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Title *</label>
+                    <input type="text" class="form-control" @bind="model.Title" placeholder="Security Patch" required />
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Description</label>
+                    <textarea class="form-control" @bind="model.Description" placeholder="Brief description of the update..." rows="3"></textarea>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Change Log</label>
+                    <textarea class="form-control" @bind="model.ChangeLog" placeholder="- Fixed bug XYZ&#10;- Added feature ABC" rows="5"></textarea>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Update Type</label>
+                    <select class="form-control" @bind="model.UpdateType">
+                        <option value="@UpdateType.Security">Security</option>
+                        <option value="@UpdateType.BugFix">Bug Fix</option>
+                        <option value="@UpdateType.Feature">Feature</option>
+                        <option value="@UpdateType.Performance">Performance</option>
+                    </select>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Severity</label>
+                    <select class="form-control" @bind="model.Severity">
+                        <option value="@UpdateSeverity.Critical">Critical</option>
+                        <option value="@UpdateSeverity.High">High</option>
+                        <option value="@UpdateSeverity.Medium">Medium</option>
+                        <option value="@UpdateSeverity.Low">Low</option>
+                    </select>
+                </div>
+
+                <div class="form-check w-100">
+                    <input type="checkbox" class="form-check-input" @bind="model.IsSecurityUpdate" id="securityCheck" />
+                    <label class="form-check-label" for="securityCheck">Is Security Update</label>
+                </div>
+
+                @if (model.IsSecurityUpdate)
+                { 
+                    <div class="form-group w-100">
+                        <label>Security Fixes (one per line, e.g., CVE-2024-1234)</label>
+                        <textarea class="form-control" @bind="securityFixesInput" placeholder="CVE-2024-1234&#10;CVE-2024-5678" rows="3"></textarea>
+                        <small class="form-text text-muted">Enter CVE IDs or vulnerability descriptions, one per line</small>
+                    </div>
+                }
+
+                <div class="form-group w-100 d-none">
+                    <label>Target Device Types (one per line)</label>
+                    <textarea class="form-control" @bind="targetDeviceTypesInput" placeholder="PackagingMachine&#10;QualityControlStation" rows="3"></textarea>
+                    <small class="form-text text-muted">Enter device type names, one per line</small>
+                </div>
+
+                <FluentLabel>Update File (*.bin)</FluentLabel>
+                <InputFile OnChange="@OnFileSelected" accept=".bin" />
+
+                @if (selectedFile != null)
+                {
+                    <FluentLabel Style="color: green;">Selected: @selectedFile.Name (@FormatFileSize(selectedFile.Size))</FluentLabel>
+                }
+
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="@isUploading" Disabled="@isUploading">
+                        @(isUploading ? "Uploading..." : "Upload Update")
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" OnClick="@Cancel" Disabled="@isUploading">
+                        Cancel
+                    </FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    </EditForm>
+</FluentStack>
+
+@code {
+    private CreateUpdateDto model = new() { UpdateType = UpdateType.Security, Severity = UpdateSeverity.Medium };
+    private IBrowserFile? selectedFile;
+    private bool isUploading = false;
+    private string securityFixesInput = string.Empty;
+    private string targetDeviceTypesInput = string.Empty;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (selectedFile == null)
+        {
+            Toast.ShowError("Please select a file");
+            return;
+        }
+
+        isUploading = true;
+
+        try
+        {
+            // Parse list inputs
+            model.SecurityFixes = string.IsNullOrWhiteSpace(securityFixesInput)
+                ? new List<string>()
+                : securityFixesInput.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+            model.TargetDeviceTypes = string.IsNullOrWhiteSpace(targetDeviceTypesInput)
+                ? new List<string>()
+                : targetDeviceTypesInput.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+
+            using var content = new MultipartFormDataContent();
+
+            // Add file
+            var fileContent = new StreamContent(selectedFile.OpenReadStream(maxAllowedSize: 500_000_000)); // 500MB max
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(fileContent, "file", selectedFile.Name);
+
+            // Add form fields
+            content.Add(new StringContent(model.Version), "Version");
+            content.Add(new StringContent(model.Title), "Title");
+            if (!string.IsNullOrWhiteSpace(model.Description))
+                content.Add(new StringContent(model.Description), "Description");
+            if (!string.IsNullOrWhiteSpace(model.ChangeLog))
+                content.Add(new StringContent(model.ChangeLog), "ChangeLog");
+
+            // Serialize list properties as JSON
+            content.Add(new StringContent(JsonSerializer.Serialize(model.SecurityFixes)), "SecurityFixes");
+            content.Add(new StringContent(JsonSerializer.Serialize(model.TargetDeviceTypes)), "TargetDeviceTypes");
+
+            content.Add(new StringContent(model.UpdateType.ToString()), "UpdateType");
+            content.Add(new StringContent(model.Severity.ToString()), "Severity");
+            content.Add(new StringContent(model.IsSecurityUpdate.ToString()), "IsSecurityUpdate");
+
+            var response = await Http.PostAsync($"{updateServiceUrl}/api/updates", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess($"Update {model.Version} uploaded successfully!");
+                // Reset form
+                model = new() { UpdateType = UpdateType.Security, Severity = UpdateSeverity.Medium };
+                selectedFile = null;
+                securityFixesInput = string.Empty;
+                targetDeviceTypesInput = string.Empty;
+                StateHasChanged();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Upload failed: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Upload error: {ex.Message}");
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F2} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F2} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+}

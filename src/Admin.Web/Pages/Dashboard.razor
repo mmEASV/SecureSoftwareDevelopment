@@ -1,0 +1,113 @@
+@page "/dashboard"
+@using Admin.Shared.Dto
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject IToastService Toast
+
+<PageTitle>Dashboard</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Width="100%">
+    <h2>Update Service Dashboard</h2>
+
+    @if (stats == null)
+    {
+        <FluentProgressRing />
+    }
+    else
+    {
+        <FluentGrid>
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard>
+                    <h4>Total Devices</h4>
+                    <p style="font-size: 2.5em; margin: 0;">@deviceCount</p>
+                </FluentCard>
+            </FluentGridItem>
+
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard>
+                    <h4>Active Releases</h4>
+                    <p style="font-size: 2.5em; margin: 0;">@releaseCount</p>
+                </FluentCard>
+            </FluentGridItem>
+
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard>
+                    <h4>Pending Deployments</h4>
+                    <p style="font-size: 2.5em; margin: 0; color: orange;">@stats.PendingDeployments</p>
+                </FluentCard>
+            </FluentGridItem>
+
+            <FluentGridItem xs="12" sm="6" md="3">
+                <FluentCard>
+                    <h4>Failed Deployments</h4>
+                    <p style="font-size: 2.5em; margin: 0; color: red;">@stats.FailedDeployments</p>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        <FluentCard>
+            <h3>System Status</h3>
+            <FluentStack Orientation="Orientation.Vertical">
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentLabel>Total Updates:</FluentLabel>
+                    <strong>@updateCount</strong>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentLabel>Completed Deployments:</FluentLabel>
+                    <strong>@stats.CompletedDeployments</strong>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Horizontal">
+                    <FluentLabel>Success Rate:</FluentLabel>
+                    <strong>@($"{CalculateSuccessRate():F1}%")</strong>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    private DeploymentStatistics? stats;
+    private int deviceCount;
+    private int releaseCount;
+    private int updateCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+
+            // Load stats
+            stats = await Http.GetFromJsonAsync<DeploymentStatistics>($"{updateServiceUrl}/api/deployments/statistics");
+
+            // Load counts
+            var devices = await Http.GetFromJsonAsync<List<DeviceDto>>($"{updateServiceUrl}/api/devices");
+            deviceCount = devices?.Count ?? 0;
+
+            var releases = await Http.GetFromJsonAsync<List<ReleaseDto>>($"{updateServiceUrl}/api/releases/active");
+            releaseCount = releases?.Count ?? 0;
+
+            var updates = await Http.GetFromJsonAsync<List<UpdateDto>>($"{updateServiceUrl}/api/updates");
+            updateCount = updates?.Count ?? 0;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Failed to load dashboard data: {ex.Message}");
+        }
+    }
+
+    private double CalculateSuccessRate()
+    {
+        if (stats == null) return 0;
+
+        var total = stats.CompletedDeployments + stats.FailedDeployments;
+        if (total == 0) return 100;
+
+        return (stats.CompletedDeployments / (double)total) * 100;
+    }
+}
