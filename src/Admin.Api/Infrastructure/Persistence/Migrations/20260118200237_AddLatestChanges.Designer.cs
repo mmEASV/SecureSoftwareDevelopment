@@ -3,6 +3,7 @@ using System;
 using Admin.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Admin.Api.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(UpdateServiceDbContext))]
-    partial class UpdateServiceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260118200237_AddLatestChanges")]
+    partial class AddLatestChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
