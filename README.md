@@ -18,7 +18,6 @@
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 - [CRA Compliance](#cra-compliance)
-- [Documentation](#documentation)
 
 ---
 
@@ -293,14 +292,6 @@ All 10 CRA compliance tests verify:
 - Postpone mechanism
 - Mandatory update enforcement
 - Security transparency
-
----
-
-## 📚 Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Comprehensive architecture guide and development commands
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - High-level overview and feature summary
-- **[ASPIRE_DATABASE_FIXES.md](ASPIRE_DATABASE_FIXES.md)** - Database setup troubleshooting
 
 ---
 
