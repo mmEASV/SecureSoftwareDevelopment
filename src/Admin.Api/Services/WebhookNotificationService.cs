@@ -1,3 +1,4 @@
+using Admin.Api.Domain.Interfaces;
 using Admin.Shared.Models;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,23 +19,21 @@ public class WebhookNotificationService : IWebhookNotificationService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<WebhookNotificationService> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly IClientRepository _clientRepository;
 
     public WebhookNotificationService(
         IHttpClientFactory httpClientFactory,
         ILogger<WebhookNotificationService> logger,
-        IConfiguration configuration)
+        IClientRepository clientRepository)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _configuration = configuration;
+        _clientRepository = clientRepository;
     }
 
     public async Task NotifyClientsOfNewReleaseAsync(Release release, CancellationToken cancellationToken = default)
     {
-        // In a real implementation, fetch clients from database
-        // For now, get from configuration or use sample data
-        var clients = GetRegisteredClients();
+        var clients = await _clientRepository.GetActiveClientsAsync(cancellationToken);
 
         _logger.LogInformation("Notifying {Count} clients of new release {ReleaseId}", clients.Count, release.Id);
 
@@ -86,6 +85,9 @@ public class WebhookNotificationService : IWebhookNotificationService
 
             var success = await SendWebhookAsync(client, payload, cancellationToken);
 
+            // Update webhook status in database
+            await _clientRepository.UpdateWebhookStatusAsync(client.Id, success, cancellationToken);
+
             if (success)
             {
                 _logger.LogInformation("Webhook delivered successfully to client {ClientId} ({ClientName})",
@@ -101,6 +103,8 @@ public class WebhookNotificationService : IWebhookNotificationService
         {
             _logger.LogError(ex, "Error sending webhook to client {ClientId} ({ClientName})",
                 client.Id, client.Name);
+            // Update webhook status as failed
+            await _clientRepository.UpdateWebhookStatusAsync(client.Id, false, CancellationToken.None);
         }
     }
 
@@ -159,43 +163,4 @@ public class WebhookNotificationService : IWebhookNotificationService
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         return Convert.ToBase64String(hash);
     }
-
-    /// <summary>
-    /// Get registered clients from configuration
-    /// In production, this would query from database via IClientRepository
-    /// </summary>
-    private List<Client> GetRegisteredClients()
-    {
-        var webhookConfig = _configuration.GetSection("Webhooks:Clients").Get<List<WebhookClient>>();
-        if (webhookConfig == null || !webhookConfig.Any())
-        {
-            _logger.LogWarning("No webhook clients configured in appsettings");
-            return new List<Client>();
-        }
-
-        return webhookConfig.Select(wc => new Client
-        {
-            Id = Guid.NewGuid(),
-            Name = wc.Name,
-            WebhookUrl = wc.WebhookUrl,
-            WebhookSecret = wc.WebhookSecret,
-            IsActive = wc.IsActive
-        }).ToList();
-    }
-}
-
-/// <summary>
-/// Configuration for webhook clients
-/// </summary>
-public class WebhookConfiguration
-{
-    public List<WebhookClient> Clients { get; set; } = new();
-}
-
-public class WebhookClient
-{
-    public string Name { get; set; } = string.Empty;
-    public string WebhookUrl { get; set; } = string.Empty;
-    public string WebhookSecret { get; set; } = string.Empty;
-    public bool IsActive { get; set; } = true;
 }

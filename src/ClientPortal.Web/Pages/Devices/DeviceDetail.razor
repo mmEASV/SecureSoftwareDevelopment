@@ -1,0 +1,212 @@
+@page "/devices/{Id:guid}"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using ClientPortal.Web.Application.Services
+@using ButtonType = Microsoft.FluentUI.AspNetCore.Components.ButtonType
+@inject UpdateServiceClient UpdateService
+@inject NavigationManager Navigation
+
+<PageTitle>Device Details</PageTitle>
+
+@if (isLoading)
+{
+    <FluentProgressRing />
+}
+else if (device == null)
+{
+    <FluentMessageBar Intent="MessageIntent.Error">
+        Device not found.
+    </FluentMessageBar>
+}
+else
+{
+    <FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <div style="flex: 1;">
+                    <h1 style="margin: 0;">@device.DeviceName</h1>
+                    <p style="margin: 8px 0 0 0; color: #605e5c;">@device.DeviceIdentifier</p>
+                </div>
+                @if (device.IsActive)
+                {
+                    <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Neutral">Inactive</FluentBadge>
+                }
+            </FluentStack>
+        </FluentCard>
+
+        <FluentGrid Spacing="3">
+            <FluentGridItem xs="12" md="6">
+                <FluentCard Style="height: 100%;">
+                    <h3>Device Information</h3>
+                    <FluentStack Orientation="Orientation.Vertical" Style="gap: 8px;">
+                        <div><strong>Type:</strong> @device.DeviceType</div>
+                        <div><strong>Current Version:</strong> @device.CurrentVersion</div>
+                        <div><strong>Registered:</strong> @device.RegisteredAt.ToString("yyyy-MM-dd HH:mm")</div>
+                        <div><strong>Last Seen:</strong> @(device.LastSeenAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</div>
+                        <div><strong>Last Update Check:</strong> @(device.LastUpdateCheck?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</div>
+                    </FluentStack>
+                </FluentCard>
+            </FluentGridItem>
+
+            <FluentGridItem xs="12" md="6">
+                <FluentCard Style="height: 100%;">
+                    <h3>Update Settings</h3>
+                    <EditForm Model="@settings" OnValidSubmit="@SaveSettings">
+                        <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" @bind="settings.AutomaticUpdates" id="autoUpdates" />
+                                <label class="form-check-label" for="autoUpdates">Enable Automatic Updates</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" @bind="settings.SkipNonSecurityUpdates" id="skipNonSec" />
+                                <label class="form-check-label" for="skipNonSec">Skip Non-Security Updates</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" @bind="settings.PostponeSecurityUpdates" id="postponeSec" />
+                                <label class="form-check-label" for="postponeSec">Allow Postponing Security Updates</label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Maintenance Window Start</label>
+                                <input type="text" class="form-control" @bind="settings.MaintenanceWindowStart" placeholder="e.g., 02:00" />
+                            </div>
+
+                            <div class="form-group">
+                                <label>Maintenance Window End</label>
+                                <input type="text" class="form-control" @bind="settings.MaintenanceWindowEnd" placeholder="e.g., 06:00" />
+                            </div>
+
+                            <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="@isSaving">
+                                @(isSaving ? "Saving..." : "Save Settings")
+                            </FluentButton>
+
+                            @if (settingsSaved)
+                            {
+                                <FluentMessageBar Intent="MessageIntent.Success">
+                                    Settings saved successfully!
+                                </FluentMessageBar>
+                            }
+                        </FluentStack>
+                    </EditForm>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="margin-bottom: 16px;">
+                <h3 style="flex: 1; margin: 0;">Deployment History</h3>
+            </FluentStack>
+
+            @if (deployments == null || !deployments.Any())
+            {
+                <FluentMessageBar Intent="MessageIntent.Info">
+                    No deployments for this device yet.
+                </FluentMessageBar>
+            }
+            else
+            {
+                <FluentDataGrid Items="@deployments.AsQueryable()" GridTemplateColumns="1fr 1fr 1fr 1fr">
+                    <TemplateColumn Title="Version" Sortable="true">
+                        @(context.Release?.Update?.Version ?? "N/A")
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(d => d.ScheduledAt)" Title="Scheduled" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+                    <TemplateColumn Title="Status" Sortable="true">
+                        <FluentBadge Appearance="@GetStatusBadgeAppearance(context.Status)">
+                            @context.Status
+                        </FluentBadge>
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(d => d.CompletedAt)" Title="Completed" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+                </FluentDataGrid>
+            }
+        </FluentCard>
+
+        <FluentButton Appearance="Appearance.Neutral" OnClick="@GoBack">
+            <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())" Slot="start" />
+            Back to Devices
+        </FluentButton>
+    </FluentStack>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private DeviceDto? device;
+    private List<DeploymentDto>? deployments;
+    private UpdateDeviceSettingsDto settings = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool settingsSaved = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDevice();
+        await LoadDeployments();
+    }
+
+    private async Task LoadDevice()
+    {
+        isLoading = true;
+        device = await UpdateService.GetDeviceByIdAsync(Id);
+
+        if (device != null)
+        {
+            settings = new UpdateDeviceSettingsDto
+            {
+                AutomaticUpdates = device.AutomaticUpdates,
+                SkipNonSecurityUpdates = device.SkipNonSecurityUpdates,
+                PostponeSecurityUpdates = device.PostponeSecurityUpdates,
+                MaintenanceWindowStart = device.MaintenanceWindowStart,
+                MaintenanceWindowEnd = device.MaintenanceWindowEnd
+            };
+        }
+        isLoading = false;
+    }
+
+    private async Task LoadDeployments()
+    {
+        deployments = await UpdateService.GetDeploymentsAsync(Id);
+    }
+
+    private async Task SaveSettings()
+    {
+        isSaving = true;
+        settingsSaved = false;
+
+        var success = await UpdateService.UpdateDeviceSettingsAsync(Id, settings);
+
+        if (success)
+        {
+            settingsSaved = true;
+            await LoadDevice();
+        }
+
+        isSaving = false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/devices");
+    }
+
+    private Appearance GetStatusBadgeAppearance(DeploymentStatus status)
+    {
+        return status switch
+        {
+            DeploymentStatus.Pending => Appearance.Neutral,
+            DeploymentStatus.Downloading => Appearance.Accent,
+            DeploymentStatus.Installing => Appearance.Accent,
+            DeploymentStatus.Completed => Appearance.Accent,
+            DeploymentStatus.Failed => Appearance.Accent,
+            DeploymentStatus.Postponed => Appearance.Neutral,
+            DeploymentStatus.Cancelled => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+}

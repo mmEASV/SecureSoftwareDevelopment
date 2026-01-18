@@ -2,6 +2,7 @@
 using Admin.Api.Domain.Interfaces;
 using Admin.Api.Endpoints.Deployments;
 using Admin.Api.Endpoints.Devices;
+using Admin.Api.Endpoints.Clients;
 using Admin.Api.Endpoints.Releases;
 using Admin.Api.Endpoints.Sync;
 using Admin.Api.Endpoints.Updates;
@@ -24,6 +25,7 @@ builder.Services.AddScoped<IUpdateRepository, UpdateRepository>();
 builder.Services.AddScoped<IReleaseRepository, ReleaseRepository>();
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
+builder.Services.AddScoped<IClientRepository, ClientRepository>();
 
 // Add security services
 builder.Services.AddSingleton<Admin.Api.Infrastructure.Security.IDigitalSignatureService, Admin.Api.Infrastructure.Security.RsaDigitalSignatureService>();
@@ -33,6 +35,9 @@ builder.Services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 
 // Add webhook notification service
 builder.Services.AddScoped<IWebhookNotificationService, WebhookNotificationService>();
+
+// Add client health service
+builder.Services.AddScoped<IClientHealthService, ClientHealthService>();
 
 // Add HttpClient for webhooks
 builder.Services.AddHttpClient("WebhookClient", client =>
@@ -101,6 +106,7 @@ api.MapGroup("/updates").MapUpdateEndpoints();
 api.MapGroup("/releases").MapReleaseEndpoints();
 api.MapGroup("/devices").MapDeviceEndpoints();
 api.MapGroup("/deployments").MapDeploymentEndpoints();
+api.MapGroup("/clients").MapClientEndpoints();
 api.MapSyncEndpoints(); // Sync endpoints for client to pull through Cloudflare tunnel
 
 // Health check

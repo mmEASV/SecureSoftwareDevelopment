@@ -1,0 +1,193 @@
+@page "/clients"
+@using Admin.Shared.Dto
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Orientation = Microsoft.FluentUI.AspNetCore.Components.Orientation
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+<PageTitle>Clients</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+            <h1 style="flex: 1;">Customer Sites</h1>
+            <FluentButton Appearance="Appearance.Accent" Href="/clients/create">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Slot="start" />
+                Add Client
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (clients == null || !clients.Any())
+    {
+        <FluentMessageBar Intent="MessageIntent.Info">
+            No clients registered. Add your first client to enable webhook notifications.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <FluentDataGrid Items="@clients.AsQueryable()" GridTemplateColumns="2fr 2fr 1fr 1fr 1fr 2fr">
+            <PropertyColumn Property="@(c => c.Name)" Title="Name" Sortable="true" />
+            <PropertyColumn Property="@(c => c.WebhookUrl)" Title="Webhook URL" Sortable="true" />
+            <TemplateColumn Title="Status" Sortable="true">
+                @if (context.IsActive)
+                {
+                    <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
+                }
+                else
+                {
+                    <FluentBadge Appearance="Appearance.Lightweight">Inactive</FluentBadge>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Webhook Health">
+                @if (context.ConsecutiveFailures == 0 && context.LastWebhookSuccess.HasValue)
+                {
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 4px;">
+                        <FluentIcon Value="@(new Icons.Filled.Size16.CheckmarkCircle())" Color="Color.Success" />
+                        <span style="color: #107c10;">Healthy</span>
+                    </FluentStack>
+                }
+                else if (context.ConsecutiveFailures > 0)
+                {
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 4px;">
+                        <FluentIcon Value="@(new Icons.Filled.Size16.DismissCircle())" Color="Color.Error" />
+                        <span style="color: #d13438;">@context.ConsecutiveFailures failures</span>
+                    </FluentStack>
+                }
+                else
+                {
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="gap: 4px;">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.QuestionCircle())" Color="Color.Neutral" />
+                        <span style="color: #605e5c;">Not tested</span>
+                    </FluentStack>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Last Success">
+                @if (context.LastWebhookSuccess.HasValue)
+                {
+                    @context.LastWebhookSuccess.Value.ToString("yyyy-MM-dd HH:mm")
+                }
+                else
+                {
+                    <span style="color: #605e5c;">Never</span>
+                }
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                    <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                                 OnClick="@(() => EditClient(context))">
+                        Edit
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" Size="ButtonSize.Small"
+                                 OnClick="@(() => CheckHealth(context))" Loading="@(checkingHealthId == context.Id)">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Heart())" Slot="start" />
+                        Health
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" Size="ButtonSize.Small"
+                                 OnClick="@(() => TestWebhook(context))" Loading="@(testingClientId == context.Id)">
+                        Test
+                    </FluentButton>
+                </FluentStack>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</FluentStack>
+
+@code {
+    private List<ClientDto>? clients;
+    private bool isLoading = true;
+    private Guid? testingClientId;
+    private Guid? checkingHealthId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        isLoading = true;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            clients = await Http.GetFromJsonAsync<List<ClientDto>>($"{updateServiceUrl}/api/clients?includeInactive=true");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Failed to load clients: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void EditClient(ClientDto client)
+    {
+        Navigation.NavigateTo($"/clients/edit/{client.Id}");
+    }
+
+    private async Task CheckHealth(ClientDto client)
+    {
+        checkingHealthId = client.Id;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.GetAsync($"{updateServiceUrl}/api/clients/{client.Id}/health");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess($"Health check passed for {client.Name}");
+            }
+            else
+            {
+                Toast.ShowError($"Health check failed for {client.Name}");
+            }
+
+            await LoadClients();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error checking health: {ex.Message}");
+        }
+        finally
+        {
+            checkingHealthId = null;
+        }
+    }
+
+    private async Task TestWebhook(ClientDto client)
+    {
+        testingClientId = client.Id;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.PostAsync($"{updateServiceUrl}/api/clients/{client.Id}/test", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess($"Webhook test successful for {client.Name}");
+            }
+            else
+            {
+                Toast.ShowError($"Webhook test failed for {client.Name}");
+            }
+
+            await LoadClients();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error testing webhook: {ex.Message}");
+        }
+        finally
+        {
+            testingClientId = null;
+        }
+    }
+}

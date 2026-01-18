@@ -1,0 +1,126 @@
+@page "/updates"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Orientation = Microsoft.FluentUI.AspNetCore.Components.Orientation
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+<PageTitle>Updates</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+            <h1 style="flex: 1;">Software Updates</h1>
+            <FluentButton Appearance="Appearance.Accent" Href="/updates/upload">
+                <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Slot="start" />
+                Upload New Update
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (updates == null || !updates.Any())
+    {
+        <FluentMessageBar Intent="MessageIntent.Info">
+            No updates available. Upload your first update to get started.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <FluentDataGrid Items="@updates.AsQueryable()" GridTemplateColumns="1fr 2fr 1fr 1fr 1fr 1fr 1fr">
+            <PropertyColumn Property="@(u => u.Version)" Title="Version" Sortable="true" />
+            <PropertyColumn Property="@(u => u.Title)" Title="Title" Sortable="true" />
+            <TemplateColumn Title="Type" Sortable="true">
+                <FluentBadge Appearance="@GetTypeBadgeAppearance(context.UpdateType)">
+                    @context.UpdateType
+                </FluentBadge>
+            </TemplateColumn>
+            <TemplateColumn Title="Severity" Sortable="true">
+                <FluentBadge Appearance="@GetSeverityBadgeAppearance(context.Severity)">
+                    @context.Severity
+                </FluentBadge>
+            </TemplateColumn>
+            <PropertyColumn Property="@(u => FormatFileSize(u.FileSize))" Title="Size" Sortable="true" />
+            <PropertyColumn Property="@(u => u.CreatedAt)" Title="Created" Format="yyyy-MM-dd HH:mm" Sortable="true" />
+            <TemplateColumn Title="Actions">
+                <FluentStack Orientation="Orientation.Horizontal" Style="gap: 4px;">
+                    <FluentButton Appearance="Appearance.Accent" Size="ButtonSize.Small"
+                                 OnClick="@(() => CreateRelease(context))">
+                        Create Release
+                    </FluentButton>
+                </FluentStack>
+            </TemplateColumn>
+        </FluentDataGrid>
+    }
+</FluentStack>
+
+@code {
+    private List<UpdateDto>? updates;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUpdates();
+    }
+
+    private async Task LoadUpdates()
+    {
+        isLoading = true;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            updates = await Http.GetFromJsonAsync<List<UpdateDto>>($"{updateServiceUrl}/api/updates?includeInactive=true");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Failed to load updates: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void CreateRelease(UpdateDto update)
+    {
+        Navigation.NavigateTo($"/releases/create?updateId={update.Id}");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
+    }
+
+    private Appearance GetTypeBadgeAppearance(UpdateType type)
+    {
+        return type switch
+        {
+            UpdateType.Security => Appearance.Accent,
+            UpdateType.BugFix => Appearance.Neutral,
+            UpdateType.Feature => Appearance.Accent,
+            UpdateType.Performance => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetSeverityBadgeAppearance(UpdateSeverity severity)
+    {
+        return severity switch
+        {
+            UpdateSeverity.Critical => Appearance.Accent,
+            UpdateSeverity.High => Appearance.Accent,
+            UpdateSeverity.Medium => Appearance.Neutral,
+            UpdateSeverity.Low => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+}

@@ -14,6 +14,7 @@ public class UpdateServiceDbContext : DbContext
     public DbSet<Release> Releases => Set<Release>();
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<Deployment> Deployments => Set<Deployment>();
+    public DbSet<Client> Clients => Set<Client>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +70,15 @@ public class UpdateServiceDbContext : DbContext
             entity.HasIndex(e => new { e.DeviceId, e.Status });
             entity.HasIndex(e => new { e.ReleaseId, e.Status });
             entity.HasIndex(e => e.ScheduledAt);
+        });
+
+        // Configure Client entity
+        modelBuilder.Entity<Client>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.WebhookUrl).IsUnique();
         });
     }
 }

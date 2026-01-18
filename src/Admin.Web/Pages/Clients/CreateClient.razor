@@ -1,0 +1,103 @@
+@page "/clients/create"
+@using Admin.Shared.Dto
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Orientation = Microsoft.FluentUI.AspNetCore.Components.Orientation
+@using ButtonType = Microsoft.FluentUI.AspNetCore.Components.ButtonType
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+<PageTitle>Add Client</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Width="100%">
+    <h2>Add New Client</h2>
+
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit" class="w-100">
+        <DataAnnotationsValidator />
+
+        <FluentCard Style="max-width: 800px;">
+            <FluentStack Orientation="Orientation.Vertical" Style="gap: 16px;">
+                <div class="form-group w-100">
+                    <label>Client Name *</label>
+                    <input type="text" class="form-control" @bind="model.Name" placeholder="e.g., Acme Corp Production" required />
+                    <ValidationMessage For="@(() => model.Name)" />
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Description</label>
+                    <textarea class="form-control" @bind="model.Description" placeholder="Description of this client site..." rows="3"></textarea>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Webhook URL *</label>
+                    <input type="url" class="form-control" @bind="model.WebhookUrl"
+                           placeholder="https://customer-tunnel.trycloudflare.com/api/webhooks/release-notification" required />
+                    <small class="form-text text-muted">The URL where release notifications will be sent via POST request</small>
+                    <ValidationMessage For="@(() => model.WebhookUrl)" />
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Contact Email</label>
+                    <input type="email" class="form-control" @bind="model.ContactEmail" placeholder="admin@customer.com" />
+                    <small class="form-text text-muted">Contact email for this client (optional)</small>
+                    <ValidationMessage For="@(() => model.ContactEmail)" />
+                </div>
+
+                <FluentMessageBar Intent="MessageIntent.Info">
+                    A secure webhook secret will be automatically generated. Share this secret with the client to verify webhook authenticity.
+                </FluentMessageBar>
+
+                <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;">
+                    <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="@isSubmitting" Disabled="@isSubmitting">
+                        @(isSubmitting ? "Creating..." : "Create Client")
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" OnClick="@Cancel" Disabled="@isSubmitting">
+                        Cancel
+                    </FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    </EditForm>
+</FluentStack>
+
+@code {
+    private CreateClientDto model = new();
+    private bool isSubmitting = false;
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.PostAsJsonAsync($"{updateServiceUrl}/api/clients", model);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var createdClient = await response.Content.ReadFromJsonAsync<ClientDto>();
+                Toast.ShowSuccess($"Client created successfully! Webhook secret: {createdClient?.WebhookSecret}");
+                Navigation.NavigateTo("/clients");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Failed to create client: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error creating client: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/clients");
+    }
+}

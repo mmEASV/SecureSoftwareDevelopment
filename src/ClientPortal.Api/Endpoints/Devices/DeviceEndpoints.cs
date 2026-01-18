@@ -11,6 +11,10 @@ public static class DeviceEndpoints
     public static RouteGroupBuilder MapDeviceEndpoints(this RouteGroupBuilder group)
     {
         // Customer-facing: Register and manage their own devices
+        group.MapGet("/", GetAllDevices)
+            .WithName("GetAllDevices")
+            .WithOpenApi();
+
         group.MapPost("/", RegisterDevice)
             .WithName("RegisterDevice")
             .WithOpenApi();
@@ -28,6 +32,38 @@ public static class DeviceEndpoints
             .WithOpenApi();
 
         return group;
+    }
+
+    private static async Task<IResult> GetAllDevices(
+        [FromServices] IDeviceRepository deviceRepository,
+        [FromQuery] Guid? tenantId,
+        CancellationToken cancellationToken)
+    {
+        var devices = await deviceRepository.GetAllAsync(false, cancellationToken);
+
+        // Filter by tenant if specified
+        if (tenantId.HasValue)
+        {
+            devices = devices.Where(d => d.TenantId == tenantId.Value).ToList();
+        }
+
+        var dtos = devices.Select(device => new DeviceDto
+        {
+            Id = device.Id,
+            DeviceIdentifier = device.DeviceIdentifier,
+            DeviceName = device.DeviceName,
+            DeviceType = device.DeviceType,
+            TenantId = device.TenantId,
+            CurrentVersion = device.CurrentVersion,
+            LastSeenAt = device.LastSeenAt,
+            LastUpdateCheck = device.LastUpdateCheck,
+            IsActive = device.IsActive,
+            RegisteredAt = device.RegisteredAt,
+            AutomaticUpdates = device.AutomaticUpdates,
+            SkipNonSecurityUpdates = device.SkipNonSecurityUpdates
+        }).ToList();
+
+        return Results.Ok(dtos);
     }
 
     private static async Task<IResult> RegisterDevice(

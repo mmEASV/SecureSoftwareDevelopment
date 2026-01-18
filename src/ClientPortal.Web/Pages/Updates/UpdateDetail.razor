@@ -1,0 +1,182 @@
+@page "/updates/{Id:guid}"
+@using Admin.Shared.Dto
+@using Admin.Shared.Enums
+@using ClientPortal.Web.Application.Services
+@inject UpdateServiceClient UpdateService
+@inject NavigationManager Navigation
+
+<PageTitle>Update Details</PageTitle>
+
+@if (isLoading)
+{
+    <FluentProgressRing />
+}
+else if (release == null)
+{
+    <FluentMessageBar Intent="MessageIntent.Error">
+        Release not found.
+    </FluentMessageBar>
+}
+else
+{
+    <FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center">
+                <div style="flex: 1;">
+                    <h1 style="margin: 0;">@release.Update?.Title</h1>
+                    <p style="margin: 8px 0 0 0; color: #605e5c;">Version @release.Update?.Version</p>
+                </div>
+                <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;">
+                    @if (release.IsMandatory)
+                    {
+                        <FluentBadge Appearance="Appearance.Accent">Mandatory</FluentBadge>
+                    }
+                    <FluentBadge Appearance="@GetSeverityBadgeAppearance(release.Update?.Severity ?? UpdateSeverity.Low)">
+                        @release.Update?.Severity
+                    </FluentBadge>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+
+        <FluentGrid Spacing="3">
+            <FluentGridItem xs="12" md="8">
+                <FluentCard Style="height: 100%;">
+                    <h3>Description</h3>
+                    <p>@(release.Update?.Description ?? "No description available")</p>
+
+                    @if (!string.IsNullOrEmpty(release.Update?.ChangeLog))
+                    {
+                        <h4>Change Log</h4>
+                        <pre style="background-color: #f3f2f1; padding: 12px; border-radius: 4px; white-space: pre-wrap;">@release.Update.ChangeLog</pre>
+                    }
+
+                    @if (!string.IsNullOrEmpty(release.ReleaseNotes))
+                    {
+                        <h4>Release Notes</h4>
+                        <p>@release.ReleaseNotes</p>
+                    }
+                </FluentCard>
+            </FluentGridItem>
+
+            <FluentGridItem xs="12" md="4">
+                <FluentCard Style="height: 100%;">
+                    <h3>Update Information</h3>
+                    <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+                        <div>
+                            <strong>Type:</strong>
+                            <FluentBadge Appearance="@GetTypeBadgeAppearance(release.Update?.UpdateType ?? UpdateType.Feature)">
+                                @release.Update?.UpdateType
+                            </FluentBadge>
+                        </div>
+                        <div>
+                            <strong>Severity:</strong>
+                            <FluentBadge Appearance="@GetSeverityBadgeAppearance(release.Update?.Severity ?? UpdateSeverity.Low)">
+                                @release.Update?.Severity
+                            </FluentBadge>
+                        </div>
+                        <div><strong>Release Date:</strong> @release.ReleaseDate.ToString("yyyy-MM-dd")</div>
+                        <div><strong>File Size:</strong> @FormatFileSize(release.Update?.FileSize ?? 0)</div>
+                        @if (!string.IsNullOrEmpty(release.MinimumVersion))
+                        {
+                            <div><strong>Minimum Version:</strong> @release.MinimumVersion</div>
+                        }
+                        @if (release.IsMandatory)
+                        {
+                            <div><strong>Max Postpone Days:</strong> @release.MaxPostponeDays</div>
+                        }
+                    </FluentStack>
+                </FluentCard>
+            </FluentGridItem>
+        </FluentGrid>
+
+        @if (release.Update?.IsSecurityUpdate == true && release.Update?.SecurityFixes?.Any() == true)
+        {
+            <FluentCard>
+                <h3>Security Fixes</h3>
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 8px;">
+                    @foreach (var fix in release.Update.SecurityFixes)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;" VerticalAlignment="VerticalAlignment.Center">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.ShieldCheckmark())" Color="Color.Accent" />
+                            <span>@fix</span>
+                        </FluentStack>
+                    }
+                </FluentStack>
+            </FluentCard>
+        }
+
+        <FluentCard>
+            <h3>Integrity Verification</h3>
+            <FluentStack Orientation="Orientation.Vertical" Style="gap: 8px;">
+                <div>
+                    <strong>SHA-256 Hash:</strong>
+                    <code style="word-break: break-all; font-size: 12px;">@release.Update?.FileHash</code>
+                </div>
+                <div>
+                    <strong>Digital Signature:</strong>
+                    <code style="word-break: break-all; font-size: 12px;">@(release.Update?.DigitalSignature?.Substring(0, Math.Min(64, release.Update?.DigitalSignature?.Length ?? 0)))...</code>
+                </div>
+            </FluentStack>
+        </FluentCard>
+
+        <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;">
+            <FluentButton Appearance="Appearance.Neutral" OnClick="@GoBack">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())" Slot="start" />
+                Back to Updates
+            </FluentButton>
+        </FluentStack>
+    </FluentStack>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ReleaseDto? release;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        var releases = await UpdateService.GetActiveReleasesAsync();
+        release = releases.FirstOrDefault(r => r.Id == Id);
+        isLoading = false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/updates");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
+    }
+
+    private Appearance GetTypeBadgeAppearance(UpdateType type)
+    {
+        return type switch
+        {
+            UpdateType.Security => Appearance.Accent,
+            UpdateType.BugFix => Appearance.Neutral,
+            UpdateType.Feature => Appearance.Accent,
+            UpdateType.Performance => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetSeverityBadgeAppearance(UpdateSeverity severity)
+    {
+        return severity switch
+        {
+            UpdateSeverity.Critical => Appearance.Accent,
+            UpdateSeverity.High => Appearance.Accent,
+            UpdateSeverity.Medium => Appearance.Neutral,
+            UpdateSeverity.Low => Appearance.Lightweight,
+            _ => Appearance.Neutral
+        };
+    }
+}

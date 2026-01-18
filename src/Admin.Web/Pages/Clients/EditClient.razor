@@ -1,0 +1,257 @@
+@page "/clients/edit/{Id:guid}"
+@using Admin.Shared.Dto
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Orientation = Microsoft.FluentUI.AspNetCore.Components.Orientation
+@using ButtonType = Microsoft.FluentUI.AspNetCore.Components.ButtonType
+@inject HttpClient Http
+@inject IConfiguration Config
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+<PageTitle>Edit Client</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Width="100%">
+    <h2>Edit Client</h2>
+
+    @if (isLoading)
+    {
+        <FluentProgressRing />
+    }
+    else if (client == null)
+    {
+        <FluentMessageBar Intent="MessageIntent.Error">
+            Client not found.
+        </FluentMessageBar>
+    }
+    else
+    {
+        <EditForm Model="@model" OnValidSubmit="@HandleSubmit" class="w-100">
+            <DataAnnotationsValidator />
+
+            <FluentCard Style="max-width: 800px;">
+                <FluentStack Orientation="Orientation.Vertical" Style="gap: 16px;">
+                    <div class="form-group w-100">
+                        <label>Client Name</label>
+                        <input type="text" class="form-control" @bind="model.Name" />
+                        <ValidationMessage For="@(() => model.Name)" />
+                    </div>
+
+                    <div class="form-group w-100">
+                        <label>Description</label>
+                        <textarea class="form-control" @bind="model.Description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group w-100">
+                        <label>Webhook URL</label>
+                        <input type="url" class="form-control" @bind="model.WebhookUrl" />
+                        <ValidationMessage For="@(() => model.WebhookUrl)" />
+                    </div>
+
+                    <div class="form-group w-100">
+                        <label>Contact Email</label>
+                        <input type="email" class="form-control" @bind="model.ContactEmail" />
+                        <ValidationMessage For="@(() => model.ContactEmail)" />
+                    </div>
+
+                    <div class="form-check w-100">
+                        <input type="checkbox" class="form-check-input" @bind="model.IsActive" id="activeCheck" />
+                        <label class="form-check-label" for="activeCheck">Active</label>
+                        <small class="form-text text-muted d-block">Inactive clients will not receive webhook notifications</small>
+                    </div>
+
+                    <FluentCard Style="background-color: #f3f2f1; padding: 16px;">
+                        <h4 style="margin-top: 0;">Webhook Secret</h4>
+                        <code style="word-break: break-all;">@client.WebhookSecret</code>
+                        <small class="form-text text-muted d-block mt-2">Share this secret with the client to verify webhook signatures</small>
+                    </FluentCard>
+
+                    <FluentCard Style="background-color: #f3f2f1; padding: 16px;">
+                        <h4 style="margin-top: 0;">Webhook Status</h4>
+                        <FluentStack Orientation="Orientation.Vertical" Style="gap: 8px;">
+                            <div>
+                                <strong>Last Success:</strong>
+                                @if (client.LastWebhookSuccess.HasValue)
+                                {
+                                    @client.LastWebhookSuccess.Value.ToString("yyyy-MM-dd HH:mm:ss UTC")
+                                }
+                                else
+                                {
+                                    <span style="color: #605e5c;">Never</span>
+                                }
+                            </div>
+                            <div>
+                                <strong>Last Failure:</strong>
+                                @if (client.LastWebhookFailure.HasValue)
+                                {
+                                    @client.LastWebhookFailure.Value.ToString("yyyy-MM-dd HH:mm:ss UTC")
+                                }
+                                else
+                                {
+                                    <span style="color: #605e5c;">None</span>
+                                }
+                            </div>
+                            <div>
+                                <strong>Consecutive Failures:</strong> @client.ConsecutiveFailures
+                            </div>
+                        </FluentStack>
+                    </FluentCard>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;">
+                        <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="@isSubmitting" Disabled="@isSubmitting">
+                            @(isSubmitting ? "Saving..." : "Save Changes")
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Neutral" OnClick="@TestWebhook" Disabled="@isSubmitting" Loading="@isTesting">
+                            @(isTesting ? "Testing..." : "Test Webhook")
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Neutral" OnClick="@Cancel" Disabled="@isSubmitting">
+                            Cancel
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Accent" Style="background-color: #d13438;" OnClick="@Delete" Disabled="@isSubmitting">
+                            Delete
+                        </FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            </FluentCard>
+        </EditForm>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ClientDto? client;
+    private UpdateClientDto model = new();
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool isTesting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        isLoading = true;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            client = await Http.GetFromJsonAsync<ClientDto>($"{updateServiceUrl}/api/clients/{Id}");
+
+            if (client != null)
+            {
+                model = new UpdateClientDto
+                {
+                    Name = client.Name,
+                    Description = client.Description,
+                    WebhookUrl = client.WebhookUrl,
+                    ContactEmail = client.ContactEmail,
+                    IsActive = client.IsActive
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Failed to load client: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.PutAsJsonAsync($"{updateServiceUrl}/api/clients/{Id}", model);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess("Client updated successfully");
+                Navigation.NavigateTo("/clients");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Failed to update client: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error updating client: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task TestWebhook()
+    {
+        isTesting = true;
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.PostAsync($"{updateServiceUrl}/api/clients/{Id}/test", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess("Webhook test successful!");
+            }
+            else
+            {
+                Toast.ShowError("Webhook test failed");
+            }
+
+            await LoadClient();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error testing webhook: {ex.Message}");
+        }
+        finally
+        {
+            isTesting = false;
+        }
+    }
+
+    private async Task Delete()
+    {
+        isSubmitting = true;
+
+        try
+        {
+            var updateServiceUrl = Config["Global:UpdateServiceApiUrl"] ?? "https://localhost:7243";
+            var response = await Http.DeleteAsync($"{updateServiceUrl}/api/clients/{Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Toast.ShowSuccess("Client deleted successfully");
+                Navigation.NavigateTo("/clients");
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Toast.ShowError($"Failed to delete client: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error deleting client: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/clients");
+    }
+}

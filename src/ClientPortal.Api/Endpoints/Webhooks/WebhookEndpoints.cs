@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ClientPortal.Api.Endpoints.Webhooks;
 
@@ -22,10 +23,20 @@ public static class WebhookEndpoints
             .Produces(200)
             .Produces(401)
             .Produces(400);
+
+        // Health check endpoint for webhook connectivity
+        group.MapGet("/ping", () => Results.Ok(new
+        {
+            Status = "ok",
+            Service = "ClientPortal.Api",
+            Timestamp = DateTime.UtcNow
+        }))
+        .WithName("WebhookPing")
+        .WithSummary("Health check endpoint for webhook connectivity");
     }
 
     private static async Task<IResult> HandleReleaseNotification(
-        [FromBody] ReleaseNotificationPayload payload,
+        HttpContext context,
         [FromHeader(Name = "X-Webhook-Signature")] string signature,
         [FromHeader(Name = "X-Webhook-Client-Id")] string clientId,
         [FromServices] IConfiguration configuration,
@@ -41,14 +52,29 @@ public static class WebhookEndpoints
                 return Results.Problem("Webhook not configured", statusCode: 500);
             }
 
-            // Verify signature
-            var jsonPayload = JsonSerializer.Serialize(payload);
-            var expectedSignature = GenerateHmacSignature(jsonPayload, webhookSecret);
+            // Read raw body for signature verification
+            // This is critical - we must verify the signature against the exact bytes received,
+            // not against a re-serialized version which may have different formatting
+            context.Request.EnableBuffering();
+            using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+            var rawBody = await reader.ReadToEndAsync();
+            context.Request.Body.Position = 0;
+
+            // Verify signature against RAW body
+            var expectedSignature = GenerateHmacSignature(rawBody, webhookSecret);
 
             if (signature != expectedSignature)
             {
                 logger.LogWarning("Invalid webhook signature from client {ClientId}", clientId);
                 return Results.Unauthorized();
+            }
+
+            // Deserialize after signature verification
+            var payload = JsonSerializer.Deserialize<ReleaseNotificationPayload>(rawBody);
+            if (payload == null)
+            {
+                logger.LogWarning("Failed to deserialize webhook payload from client {ClientId}", clientId);
+                return Results.BadRequest(new { Message = "Invalid payload" });
             }
 
             // Process the notification

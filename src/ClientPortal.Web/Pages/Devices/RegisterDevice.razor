@@ -1,0 +1,119 @@
+@page "/devices/register"
+@using Admin.Shared.Dto
+@using ClientPortal.Web.Application.Services
+@using ButtonType = Microsoft.FluentUI.AspNetCore.Components.ButtonType
+@inject UpdateServiceClient UpdateService
+@inject NavigationManager Navigation
+
+<PageTitle>Register Device</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 20px;">
+    <FluentCard>
+        <h1>Register New Device</h1>
+        <p>Register a device to receive software updates</p>
+    </FluentCard>
+
+    <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+        <DataAnnotationsValidator />
+
+        <FluentCard Style="max-width: 600px;">
+            <FluentStack Orientation="Orientation.Vertical" Style="gap: 16px;">
+                <div class="form-group w-100">
+                    <label>Device Identifier *</label>
+                    <input type="text" class="form-control" @bind="model.DeviceIdentifier"
+                           placeholder="e.g., DEVICE-001 or serial number" required />
+                    <small class="form-text text-muted">Unique identifier for this device</small>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Device Name *</label>
+                    <input type="text" class="form-control" @bind="model.DeviceName"
+                           placeholder="e.g., Production Line A Controller" required />
+                    <small class="form-text text-muted">Human-readable name for the device</small>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Device Type *</label>
+                    <select class="form-control" @bind="model.DeviceType" required>
+                        <option value="">-- Select device type --</option>
+                        <option value="PackagingMachine">Packaging Machine</option>
+                        <option value="QualityControlStation">Quality Control Station</option>
+                        <option value="InventoryScanner">Inventory Scanner</option>
+                        <option value="ProductionController">Production Controller</option>
+                        <option value="Gateway">Gateway Device</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group w-100">
+                    <label>Current Software Version</label>
+                    <input type="text" class="form-control" @bind="model.CurrentVersion" placeholder="0.0.0" />
+                    <small class="form-text text-muted">Current firmware/software version installed on the device</small>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <FluentMessageBar Intent="MessageIntent.Error">
+                        @errorMessage
+                    </FluentMessageBar>
+                }
+
+                <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px;">
+                    <FluentButton Type="ButtonType.Submit" Appearance="Appearance.Accent" Loading="@isSubmitting" Disabled="@isSubmitting">
+                        @(isSubmitting ? "Registering..." : "Register Device")
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" OnClick="@Cancel" Disabled="@isSubmitting">
+                        Cancel
+                    </FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    </EditForm>
+</FluentStack>
+
+@code {
+    private RegisterDeviceDto model = new() { CurrentVersion = "0.0.0" };
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(model.DeviceIdentifier) ||
+            string.IsNullOrWhiteSpace(model.DeviceName) ||
+            string.IsNullOrWhiteSpace(model.DeviceType))
+        {
+            errorMessage = "Please fill in all required fields";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await UpdateService.RegisterDeviceAsync(model);
+
+            if (result != null)
+            {
+                Navigation.NavigateTo($"/devices/{result.Id}");
+            }
+            else
+            {
+                errorMessage = "Failed to register device. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/devices");
+    }
+}

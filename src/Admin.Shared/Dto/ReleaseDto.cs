@@ -24,9 +24,9 @@ public class CreateReleaseDto
     public string? ReleaseNotes { get; set; }
 }
 
-public record UpdateReleaseDto
+public class UpdateReleaseDto
 {
-    public bool? IsActive { get; init; }
-    public bool? IsMandatory { get; init; }
-    public string? ReleaseNotes { get; init; }
+    public bool? IsActive { get; set; }
+    public bool? IsMandatory { get; set; }
+    public string? ReleaseNotes { get; set; }
 }

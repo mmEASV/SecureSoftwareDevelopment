@@ -256,5 +256,25 @@ public static class DataSeeder
 
         await context.Deployments.AddRangeAsync(deployment1, deployment2, deployment3, deployment4);
         await context.SaveChangesAsync();
+
+        // Seed default client for development
+        if (!await context.Clients.AnyAsync())
+        {
+            var defaultClient = new Client
+            {
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                Name = "Local Development Site",
+                Description = "Default client for local development - points to ClientPortal.Api",
+                WebhookUrl = "http://localhost:5170/api/webhooks/release-notification",
+                WebhookSecret = "dev-webhook-secret-for-local-testing-only",
+                IsActive = true,
+                ContactEmail = "dev@localhost.local",
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = Guid.Empty
+            };
+
+            await context.Clients.AddAsync(defaultClient);
+            await context.SaveChangesAsync();
+        }
     }
 }
