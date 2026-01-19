@@ -6,6 +6,7 @@ using ClientPortal.Api.Endpoints.Releases;
 using ClientPortal.Api.Endpoints.Webhooks;
 using ClientPortal.Api.Infrastructure.Persistence;
 using ClientPortal.Api.Infrastructure.Repositories;
+using ClientPortal.Api.Infrastructure.Initialization;
 using ClientPortal.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -90,6 +91,28 @@ if (app.Environment.IsDevelopment())
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Client Portal API v1");
     });
+
+    // Add global exception handler for development to see actual errors
+    app.Use(async (context, next) =>
+    {
+        try
+        {
+            await next();
+        }
+        catch (Exception ex)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Unhandled exception in request {Method} {Path}", context.Request.Method, context.Request.Path);
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = ex.Message,
+                type = ex.GetType().Name,
+                stackTrace = ex.StackTrace
+            });
+        }
+    });
 }
 
 app.UseCors();
@@ -108,6 +131,30 @@ app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Service = "Clie
 
 // Map default endpoints
 app.MapDefaultEndpoints();
+
+// Run database migrations in development
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<UpdateServiceDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Running database migrations for ClientDb...");
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("Database migrations completed successfully for ClientDb");
+
+        logger.LogInformation("Seeding initial data for ClientDb...");
+        await DataSeeder.SeedDataAsync(dbContext);
+        logger.LogInformation("Data seeding completed successfully for ClientDb");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while migrating or seeding the ClientDb database");
+        // Don't throw - let the app start and report unhealthy via health checks
+    }
+}
 
 app.Run();
 

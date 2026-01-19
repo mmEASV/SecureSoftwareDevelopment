@@ -14,47 +14,7 @@ public class UpdateServiceClient
         _logger = logger;
     }
 
-    // Updates
-    public async Task<List<UpdateDto>> GetUpdatesAsync()
-    {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<List<UpdateDto>>("/api/updates") ?? new();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching updates");
-            return new();
-        }
-    }
-
-    public async Task<UpdateDto?> GetUpdateByIdAsync(Guid id)
-    {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<UpdateDto>($"/api/updates/{id}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching update {Id}", id);
-            return null;
-        }
-    }
-
-    // Releases
-    public async Task<List<ReleaseDto>> GetReleasesAsync()
-    {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<List<ReleaseDto>>("/api/releases") ?? new();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching releases");
-            return new();
-        }
-    }
-
+    // Releases (Note: Updates are accessed through Releases in ClientPortal.Api)
     public async Task<List<ReleaseDto>> GetActiveReleasesAsync()
     {
         try
@@ -65,6 +25,21 @@ public class UpdateServiceClient
         {
             _logger.LogError(ex, "Error fetching active releases");
             return new();
+        }
+    }
+
+    public async Task<ReleaseDto?> GetReleaseByIdAsync(Guid id)
+    {
+        try
+        {
+            // Get from active releases list and filter
+            var releases = await GetActiveReleasesAsync();
+            return releases.FirstOrDefault(r => r.Id == id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching release {Id}", id);
+            return null;
         }
     }
 

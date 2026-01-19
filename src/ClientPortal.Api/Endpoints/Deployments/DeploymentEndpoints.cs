@@ -11,6 +11,10 @@ public static class DeploymentEndpoints
     public static RouteGroupBuilder MapDeploymentEndpoints(this RouteGroupBuilder group)
     {
         // Customer-facing: Schedule and postpone deployments for their devices
+        group.MapGet("/", GetAllDeployments)
+            .WithName("GetAllDeployments")
+            .WithOpenApi();
+
         group.MapPost("/schedule", ScheduleDeployment)
             .WithName("ScheduleDeployment")
             .WithOpenApi();
@@ -24,6 +28,75 @@ public static class DeploymentEndpoints
             .WithOpenApi();
 
         return group;
+    }
+
+    private static async Task<IResult> GetAllDeployments(
+        [FromServices] IDeploymentRepository deploymentRepository,
+        [FromServices] IReleaseRepository releaseRepository,
+        [FromServices] IDeviceRepository deviceRepository,
+        [FromQuery] Guid? deviceId,
+        CancellationToken cancellationToken)
+    {
+        List<Deployment> deployments;
+
+        if (deviceId.HasValue)
+        {
+            deployments = await deploymentRepository.GetByDeviceIdAsync(deviceId.Value, cancellationToken);
+        }
+        else
+        {
+            deployments = await deploymentRepository.GetAllAsync(cancellationToken);
+        }
+
+        var dtos = new List<DeploymentDto>();
+
+        foreach (var d in deployments)
+        {
+            // Load related entities
+            var release = await releaseRepository.GetByIdAsync(d.ReleaseId, cancellationToken);
+            var device = await deviceRepository.GetByIdAsync(d.DeviceId, cancellationToken);
+
+            dtos.Add(new DeploymentDto
+            {
+                Id = d.Id,
+                ReleaseId = d.ReleaseId,
+                DeviceId = d.DeviceId,
+                Status = d.Status,
+                ScheduledAt = d.ScheduledAt,
+                StartedAt = d.StartedAt,
+                CompletedAt = d.CompletedAt,
+                ErrorMessage = d.ErrorMessage,
+                PostponeReason = d.PostponeReason,
+                PostponeCount = d.PostponeCount,
+                DownloadProgress = d.DownloadProgress,
+                InstallProgress = d.InstallProgress,
+                Release = release != null ? new ReleaseDto
+                {
+                    Id = release.Id,
+                    UpdateId = release.UpdateId,
+                    ReleaseDate = release.ReleaseDate,
+                    IsMandatory = release.IsMandatory,
+                    Update = release.Update != null ? new UpdateDto
+                    {
+                        Id = release.Update.Id,
+                        Version = release.Update.Version,
+                        Title = release.Update.Title,
+                        UpdateType = release.Update.UpdateType,
+                        Severity = release.Update.Severity
+                    } : null
+                } : null,
+                Device = device != null ? new DeviceDto
+                {
+                    Id = device.Id,
+                    DeviceIdentifier = device.DeviceIdentifier,
+                    DeviceName = device.DeviceName,
+                    DeviceType = device.DeviceType,
+                    CurrentVersion = device.CurrentVersion
+                } : null
+            });
+        }
+
+        return Results.Ok(dtos);
     }
 
     private static async Task<IResult> ScheduleDeployment(

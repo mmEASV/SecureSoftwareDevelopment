@@ -58,6 +58,7 @@ public class ReleaseRepository : IReleaseRepository
 
     public async Task<Release> CreateAsync(Release release, CancellationToken cancellationToken = default)
     {
+        release.ReleaseDate = DateTime.UtcNow;
         _context.Releases.Add(release);
         await _context.SaveChangesAsync(cancellationToken);
         return release;

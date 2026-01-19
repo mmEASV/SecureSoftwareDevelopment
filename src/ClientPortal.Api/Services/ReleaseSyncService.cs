@@ -92,21 +92,71 @@ public class ReleaseSyncService : BackgroundService
             _logger.LogInformation("Fetched {Count} active releases from Admin.Api", syncDtos.Count);
 
             // Sync each release
+            int syncedCount = 0;
             foreach (var dto in syncDtos)
             {
                 try
                 {
-                    // Note: In this simplified implementation, we just log the sync
-                    // In a real implementation, you would cache the release metadata in ClientDb
-                    // For now, we're demonstrating the sync mechanism
-                    _logger.LogInformation("Synced release {ReleaseId} - Version {Version} - Severity: {Severity}",
-                        dto.ReleaseId, dto.Version, dto.Severity);
+                    // Check if update exists in ClientDb
+                    var existingUpdate = await updateRepository.GetByIdAsync(dto.UpdateId, cancellationToken);
+                    if (existingUpdate == null)
+                    {
+                        // Create cached Update record in ClientDb
+                        var update = new Update
+                        {
+                            Id = dto.UpdateId,
+                            Version = dto.Version,
+                            Title = $"Update {dto.Version}",
+                            Description = dto.Changelog,
+                            ChangeLog = dto.Changelog,
+                            SecurityFixes = string.IsNullOrEmpty(dto.CVEList)
+                                ? new List<string>()
+                                : dto.CVEList.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList(),
+                            FilePath = $"updates/{dto.FileName}",
+                            FileHash = dto.FileHash,
+                            DigitalSignature = dto.Signature,
+                            FileSize = dto.FileSizeBytes,
+                            UpdateType = Admin.Shared.Enums.UpdateType.Feature,
+                            Severity = Enum.Parse<Admin.Shared.Enums.UpdateSeverity>(dto.Severity, true),
+                            IsSecurityUpdate = !string.IsNullOrEmpty(dto.CVEList),
+                            TargetDeviceTypes = new List<string>(),
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = Guid.Empty,
+                            IsActive = true
+                        };
 
-                    // The releases will still come from the same database in development
-                    // In production with true database separation, you would:
-                    // 1. Create cached Update record in ClientDb
-                    // 2. Create cached Release record in ClientDb
-                    // 3. ClientPortal.Api would read from ClientDb cache
+                        await updateRepository.CreateAsync(update, cancellationToken);
+                        _logger.LogInformation("Created update {UpdateId} - Version {Version}", dto.UpdateId, dto.Version);
+                    }
+
+                    // Check if release exists in ClientDb
+                    var existingRelease = await releaseRepository.GetByIdAsync(dto.ReleaseId, cancellationToken);
+                    if (existingRelease == null)
+                    {
+                        // Create cached Release record in ClientDb
+                        var release = new Release
+                        {
+                            Id = dto.ReleaseId,
+                            UpdateId = dto.UpdateId,
+                            ReleaseDate = dto.ReleaseDate,
+                            IsActive = true,
+                            IsMandatory = dto.IsMandatory,
+                            MinimumVersion = null,
+                            MaxPostponeDays = dto.MaxPostponeDays,
+                            ReleaseNotes = dto.Changelog,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = Guid.Empty
+                        };
+
+                        await releaseRepository.CreateAsync(release, cancellationToken);
+                        _logger.LogInformation("Created release {ReleaseId} - Version {Version} - Severity: {Severity}",
+                            dto.ReleaseId, dto.Version, dto.Severity);
+                        syncedCount++;
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Release {ReleaseId} already exists in ClientDb", dto.ReleaseId);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -114,7 +164,7 @@ public class ReleaseSyncService : BackgroundService
                 }
             }
 
-            _logger.LogInformation("Release sync completed successfully");
+            _logger.LogInformation("Release sync completed successfully. Synced {SyncedCount} new releases", syncedCount);
         }
         catch (HttpRequestException ex)
         {
