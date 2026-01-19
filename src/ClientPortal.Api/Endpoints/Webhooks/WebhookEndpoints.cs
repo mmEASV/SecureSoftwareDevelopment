@@ -1,7 +1,7 @@
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ClientPortal.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ClientPortal.Api.Endpoints.Webhooks;
@@ -40,6 +40,7 @@ public static class WebhookEndpoints
         [FromHeader(Name = "X-Webhook-Signature")] string signature,
         [FromHeader(Name = "X-Webhook-Client-Id")] string clientId,
         [FromServices] IConfiguration configuration,
+        [FromServices] ISyncTriggerService syncTrigger,
         [FromServices] ILogger<Program> logger)
     {
         try
@@ -82,13 +83,16 @@ public static class WebhookEndpoints
                 payload.EventType, payload.ReleaseId);
 
             // Trigger immediate sync instead of waiting for scheduled poll
-            // In a real implementation, you would:
-            // 1. Signal the ReleaseSyncService to sync immediately
-            // 2. Or directly call the sync logic here
-            // For now, just log it
+            var syncTriggered = syncTrigger.TriggerSync(payload.ReleaseId);
 
-            logger.LogInformation("New release {ReleaseId} available. Sync will occur on next scheduled interval or implement immediate sync here.",
-                payload.ReleaseId);
+            if (syncTriggered)
+            {
+                logger.LogInformation("Immediate sync triggered for release {ReleaseId}", payload.ReleaseId);
+            }
+            else
+            {
+                logger.LogWarning("Failed to trigger immediate sync for release {ReleaseId} - sync already queued", payload.ReleaseId);
+            }
 
             return Results.Ok(new
             {
@@ -96,7 +100,10 @@ public static class WebhookEndpoints
                 EventType = payload.EventType,
                 ReleaseId = payload.ReleaseId,
                 Timestamp = DateTime.UtcNow,
-                Message = "Webhook notification processed successfully"
+                SyncTriggered = syncTriggered,
+                Message = syncTriggered
+                    ? "Webhook notification processed and immediate sync triggered"
+                    : "Webhook notification processed, sync already queued"
             });
         }
         catch (Exception ex)

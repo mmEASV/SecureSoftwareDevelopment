@@ -32,6 +32,10 @@ public static class ClientEndpoints
         group.MapGet("/{id:guid}/health", CheckClientHealth)
             .WithName("CheckClientHealth");
 
+        group.MapPost("/{id:guid}/notify-release/{releaseId:guid}", NotifyClientOfRelease)
+            .WithName("NotifyClientOfRelease")
+            .WithSummary("Manually trigger webhook notification to a specific client for a release");
+
         return group;
     }
 
@@ -199,6 +203,56 @@ public static class ClientEndpoints
             LastChecked = DateTime.UtcNow,
             Error = result.Error
         });
+    }
+
+    private static async Task<IResult> NotifyClientOfRelease(
+        [FromRoute] Guid id,
+        [FromRoute] Guid releaseId,
+        [FromServices] IClientRepository clientRepository,
+        [FromServices] IReleaseRepository releaseRepository,
+        [FromServices] IWebhookNotificationService webhookService,
+        [FromServices] ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
+        var client = await clientRepository.GetByIdAsync(id, cancellationToken);
+        if (client == null)
+        {
+            return Results.NotFound(new { Message = $"Client with ID {id} not found" });
+        }
+
+        var release = await releaseRepository.GetByIdAsync(releaseId, cancellationToken);
+        if (release == null)
+        {
+            return Results.NotFound(new { Message = $"Release with ID {releaseId} not found" });
+        }
+
+        logger.LogInformation("Manually triggering webhook for client {ClientId} ({ClientName}) for release {ReleaseId}",
+            id, client.Name, releaseId);
+
+        var success = await webhookService.NotifyClientOfReleaseAsync(client, release, cancellationToken);
+
+        if (success)
+        {
+            return Results.Ok(new
+            {
+                Message = "Webhook notification sent successfully",
+                ClientId = id,
+                ClientName = client.Name,
+                ReleaseId = releaseId,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            return Results.BadRequest(new
+            {
+                Message = "Webhook notification failed",
+                ClientId = id,
+                ClientName = client.Name,
+                ReleaseId = releaseId,
+                Timestamp = DateTime.UtcNow
+            });
+        }
     }
 
     private static string GenerateWebhookSecret()

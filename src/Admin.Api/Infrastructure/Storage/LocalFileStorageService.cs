@@ -53,8 +53,10 @@ public class LocalFileStorageService : IFileStorageService
             // Create digital signature of the hash
             var signature = await _signatureService.SignHashAsync(hash, cancellationToken);
 
+            var hashPreview = hash.Length > 16 ? hash[..16] + "..." : hash;
+            var sigPreview = signature.Length > 32 ? signature[..32] + "..." : signature;
             _logger.LogInformation("Saved file {FileName} to {Path} with hash {Hash} and signature {SigPreview}",
-                fileName, uniqueFileName, hash[..16] + "...", signature[..32] + "...");
+                fileName, uniqueFileName, hashPreview, sigPreview);
 
             return (uniqueFileName, hash, signature, fileInfo.Length);
         }

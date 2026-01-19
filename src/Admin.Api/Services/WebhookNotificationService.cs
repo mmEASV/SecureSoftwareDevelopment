@@ -12,6 +12,7 @@ namespace Admin.Api.Services;
 public interface IWebhookNotificationService
 {
     Task NotifyClientsOfNewReleaseAsync(Release release, CancellationToken cancellationToken = default);
+    Task<bool> NotifyClientOfReleaseAsync(Client client, Release release, CancellationToken cancellationToken = default);
     Task<bool> TestWebhookAsync(Client client, CancellationToken cancellationToken = default);
 }
 
@@ -66,7 +67,23 @@ public class WebhookNotificationService : IWebhookNotificationService
         }
     }
 
-    private async Task SendWebhookToClientAsync(Client client, Release release, CancellationToken cancellationToken)
+    public async Task<bool> NotifyClientOfReleaseAsync(Client client, Release release, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Manually notifying client {ClientId} ({ClientName}) of release {ReleaseId}",
+                client.Id, client.Name, release.Id);
+
+            return await SendWebhookToClientAsync(client, release, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manual webhook notification failed for client {ClientId}", client.Id);
+            return false;
+        }
+    }
+
+    private async Task<bool> SendWebhookToClientAsync(Client client, Release release, CancellationToken cancellationToken)
     {
         try
         {
@@ -98,6 +115,8 @@ public class WebhookNotificationService : IWebhookNotificationService
                 _logger.LogWarning("Webhook delivery failed to client {ClientId} ({ClientName})",
                     client.Id, client.Name);
             }
+
+            return success;
         }
         catch (Exception ex)
         {
@@ -105,6 +124,7 @@ public class WebhookNotificationService : IWebhookNotificationService
                 client.Id, client.Name);
             // Update webhook status as failed
             await _clientRepository.UpdateWebhookStatusAsync(client.Id, false, CancellationToken.None);
+            return false;
         }
     }
 

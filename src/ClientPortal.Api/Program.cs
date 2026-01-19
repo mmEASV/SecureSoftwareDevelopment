@@ -23,6 +23,13 @@ builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 builder.Services.AddScoped<IUpdateRepository, UpdateRepository>();
 
+// Sync trigger service (singleton for channel sharing between webhook endpoint and background service)
+builder.Services.AddSingleton<SyncTriggerService>();
+builder.Services.AddSingleton<ISyncTriggerService>(sp => sp.GetRequiredService<SyncTriggerService>());
+
+// Sync executor (scoped for repository DI)
+builder.Services.AddScoped<IReleaseSyncExecutor, ReleaseSyncExecutor>();
+
 // Configure sync settings
 builder.Services.Configure<SyncConfiguration>(builder.Configuration.GetSection("Sync"));
 

@@ -1,29 +1,27 @@
-using Admin.Shared.Models;
-using ClientPortal.Api.Domain.Interfaces;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
 
 namespace ClientPortal.Api.Services;
 
 /// <summary>
 /// Background service that periodically syncs releases from Admin.Api through Cloudflare tunnel
+/// and responds to immediate sync triggers from webhooks
 /// </summary>
 public class ReleaseSyncService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ReleaseSyncService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly SyncTriggerService _syncTrigger;
     private readonly SyncConfiguration _config;
 
     public ReleaseSyncService(
         IServiceProvider serviceProvider,
         ILogger<ReleaseSyncService> logger,
-        IHttpClientFactory httpClientFactory,
+        SyncTriggerService syncTrigger,
         IOptions<SyncConfiguration> config)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
+        _syncTrigger = syncTrigger;
         _config = config.Value;
     }
 
@@ -34,15 +32,27 @@ public class ReleaseSyncService : BackgroundService
         // Initial delay to let the application start
         await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
+        // Run both scheduled and triggered sync tasks concurrently
+        var scheduledTask = RunScheduledSyncAsync(stoppingToken);
+        var triggeredTask = RunTriggeredSyncAsync(stoppingToken);
+
+        await Task.WhenAll(scheduledTask, triggeredTask);
+    }
+
+    /// <summary>
+    /// Runs the scheduled sync on a fixed interval
+    /// </summary>
+    private async Task RunScheduledSyncAsync(CancellationToken stoppingToken)
+    {
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await SyncReleasesAsync(stoppingToken);
+                await ExecuteSyncWithScopeAsync(stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during release sync");
+                _logger.LogError(ex, "Error during scheduled release sync");
             }
 
             // Wait for the configured interval before next sync
@@ -50,129 +60,46 @@ public class ReleaseSyncService : BackgroundService
         }
     }
 
-    private async Task SyncReleasesAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Listens for sync triggers from the channel (webhook notifications)
+    /// </summary>
+    private async Task RunTriggeredSyncAsync(CancellationToken stoppingToken)
     {
-        if (string.IsNullOrEmpty(_config.AdminApiUrl))
+        await foreach (var request in _syncTrigger.Reader.ReadAllAsync(stoppingToken))
         {
-            _logger.LogWarning("AdminApiUrl not configured. Skipping sync.");
-            return;
-        }
-
-        _logger.LogInformation("Starting release sync from {AdminApiUrl}", _config.AdminApiUrl);
-
-        try
-        {
-            // Create scope for scoped services
-            using var scope = _serviceProvider.CreateScope();
-            var releaseRepository = scope.ServiceProvider.GetRequiredService<IReleaseRepository>();
-            var updateRepository = scope.ServiceProvider.GetRequiredService<IUpdateRepository>();
-
-            // Fetch active releases from Admin.Api
-            var httpClient = _httpClientFactory.CreateClient("AdminApi");
-            var response = await httpClient.GetAsync("/sync/releases/active", cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                _logger.LogWarning("Failed to fetch releases from Admin.Api. Status: {Status}", response.StatusCode);
-                return;
+                _logger.LogInformation("Processing triggered sync request for release {ReleaseId} (requested at {RequestedAt})",
+                    request.ReleaseId, request.RequestedAt);
+
+                await ExecuteSyncWithScopeAsync(stoppingToken);
             }
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var syncDtos = JsonSerializer.Deserialize<List<ReleaseSyncDto>>(json, new JsonSerializerOptions
+            catch (Exception ex)
             {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (syncDtos == null || syncDtos.Count == 0)
-            {
-                _logger.LogInformation("No active releases to sync");
-                return;
+                _logger.LogError(ex, "Error during triggered release sync for {ReleaseId}", request.ReleaseId);
             }
+        }
+    }
 
-            _logger.LogInformation("Fetched {Count} active releases from Admin.Api", syncDtos.Count);
+    /// <summary>
+    /// Creates a scope and executes the sync using the executor
+    /// </summary>
+    private async Task ExecuteSyncWithScopeAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var executor = scope.ServiceProvider.GetRequiredService<IReleaseSyncExecutor>();
+        var result = await executor.ExecuteSyncAsync(cancellationToken);
 
-            // Sync each release
-            int syncedCount = 0;
-            foreach (var dto in syncDtos)
+        if (result.Success)
+        {
+            if (result.NewReleasesCount > 0)
             {
-                try
-                {
-                    // Check if update exists in ClientDb
-                    var existingUpdate = await updateRepository.GetByIdAsync(dto.UpdateId, cancellationToken);
-                    if (existingUpdate == null)
-                    {
-                        // Create cached Update record in ClientDb
-                        var update = new Update
-                        {
-                            Id = dto.UpdateId,
-                            Version = dto.Version,
-                            Title = $"Update {dto.Version}",
-                            Description = dto.Changelog,
-                            ChangeLog = dto.Changelog,
-                            SecurityFixes = string.IsNullOrEmpty(dto.CVEList)
-                                ? new List<string>()
-                                : dto.CVEList.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList(),
-                            FilePath = $"updates/{dto.FileName}",
-                            FileHash = dto.FileHash,
-                            DigitalSignature = dto.Signature,
-                            FileSize = dto.FileSizeBytes,
-                            UpdateType = Admin.Shared.Enums.UpdateType.Feature,
-                            Severity = Enum.Parse<Admin.Shared.Enums.UpdateSeverity>(dto.Severity, true),
-                            IsSecurityUpdate = !string.IsNullOrEmpty(dto.CVEList),
-                            TargetDeviceTypes = new List<string>(),
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = Guid.Empty,
-                            IsActive = true
-                        };
-
-                        await updateRepository.CreateAsync(update, cancellationToken);
-                        _logger.LogInformation("Created update {UpdateId} - Version {Version}", dto.UpdateId, dto.Version);
-                    }
-
-                    // Check if release exists in ClientDb
-                    var existingRelease = await releaseRepository.GetByIdAsync(dto.ReleaseId, cancellationToken);
-                    if (existingRelease == null)
-                    {
-                        // Create cached Release record in ClientDb
-                        var release = new Release
-                        {
-                            Id = dto.ReleaseId,
-                            UpdateId = dto.UpdateId,
-                            ReleaseDate = dto.ReleaseDate,
-                            IsActive = true,
-                            IsMandatory = dto.IsMandatory,
-                            MinimumVersion = null,
-                            MaxPostponeDays = dto.MaxPostponeDays,
-                            ReleaseNotes = dto.Changelog,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = Guid.Empty
-                        };
-
-                        await releaseRepository.CreateAsync(release, cancellationToken);
-                        _logger.LogInformation("Created release {ReleaseId} - Version {Version} - Severity: {Severity}",
-                            dto.ReleaseId, dto.Version, dto.Severity);
-                        syncedCount++;
-                    }
-                    else
-                    {
-                        _logger.LogDebug("Release {ReleaseId} already exists in ClientDb", dto.ReleaseId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error syncing release {ReleaseId}", dto.ReleaseId);
-                }
+                _logger.LogInformation("Sync completed: {Count} new releases synced", result.NewReleasesCount);
             }
-
-            _logger.LogInformation("Release sync completed successfully. Synced {SyncedCount} new releases", syncedCount);
         }
-        catch (HttpRequestException ex)
+        else
         {
-            _logger.LogError(ex, "Network error connecting to Admin.Api at {Url}", _config.AdminApiUrl);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during release sync");
+            _logger.LogWarning("Sync failed: {ErrorMessage}", result.ErrorMessage);
         }
     }
 }

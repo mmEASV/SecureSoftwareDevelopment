@@ -11,7 +11,7 @@ public static class SyncEndpoints
 {
     public static void MapSyncEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/sync")
+        var group = app.MapGroup("/sync")
             .WithTags("Sync")
             .WithOpenApi();
 
